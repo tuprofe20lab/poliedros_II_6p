@@ -1,0 +1,2187 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TuProfe20 Lab: Área y volúmenes de sólidos geométricos</title>
+
+    <!-- Tailwind CSS, React 18, ReactDOM, Babel y Three.js r128 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <!-- KaTeX para fórmulas matemáticas nítidas -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap');
+
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            width: 100vw;
+            height: 100dvh;
+            user-select: none;
+            font-family: 'Nunito', sans-serif;
+        }
+        .font-fun { font-family: 'Nunito', sans-serif; }
+
+        @keyframes floatUp {
+            0% { transform: translateY(105vh) rotate(0deg); }
+            100% { transform: translateY(-105vh) rotate(360deg); }
+        }
+        @keyframes slideInRight {
+            0% { opacity: 0; transform: translateX(16px); }
+            100% { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes robotFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
+        }
+        @keyframes robotThinkTilt {
+            0%, 100% { transform: rotate(0deg); }
+            50% { transform: rotate(6deg) translateY(-3px); }
+        }
+        @keyframes robotJump {
+            0%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-14px); }
+        }
+        @keyframes robotTalkArmL {
+            0%, 100% { transform: rotate(45deg); }
+            50% { transform: rotate(95deg); }
+        }
+        @keyframes robotTalkArmR {
+            0%, 100% { transform: rotate(-45deg); }
+            50% { transform: rotate(-95deg); }
+        }
+        @keyframes confettiExplosion {
+            0% { transform: translate(0, 0) scale(1) rotate(0deg); opacity: 1; }
+            80% { opacity: 1; }
+            100% { transform: translate(var(--tx), var(--ty)) scale(0) rotate(var(--rot)); opacity: 0; }
+        }
+        @keyframes finalGlow {
+            0%, 100% { background-color: rgba(254, 240, 138, 0.32); }
+            50% { background-color: rgba(253, 224, 71, 0.65); }
+        }
+
+        .scrollbar-hide::-webkit-scrollbar { display: none !important; }
+        .scrollbar-hide { -ms-overflow-style: none !important; scrollbar-width: none !important; }
+
+        .animate-floatUp { animation: floatUp linear infinite; }
+        .animate-slideInRight { animation: slideInRight 0.35s ease-out forwards; }
+        .animate-robotFloat { animation: robotFloat 3s ease-in-out infinite; }
+        .animate-robotThinkTilt { animation: robotThinkTilt 2s ease-in-out infinite; }
+        .animate-robotJump { animation: robotJump 1s cubic-bezier(0.28, 0.84, 0.42, 1) infinite; }
+        .animate-robotTalkArmL { animation: robotTalkArmL 0.6s ease-in-out infinite; }
+        .animate-robotTalkArmR { animation: robotTalkArmR 0.6s ease-in-out infinite 0.1s; }
+        .animate-confettiExplosion { animation: confettiExplosion 1.8s cubic-bezier(0.25, 1, 0.5, 1) forwards; }
+        .animate-finalGlow { animation: finalGlow 2s ease-in-out infinite; }
+
+        /* Estilos KaTeX nítidos y responsivos */
+        .katex { font-weight: 800 !important; }
+        .katex-display { margin: 0 !important; padding: 0 !important; }
+        .math-card .katex { font-size: clamp(0.84rem, 1.15vw, 1.05rem) !important; color: #0f172a !important; }
+        .math-enunciado .katex { font-size: clamp(0.98rem, 1.45vw, 1.28rem) !important; color: #fde047 !important; }
+        .math-current .katex { font-size: clamp(0.98rem, 1.42vw, 1.38rem) !important; color: #0f172a !important; }
+        .math-final .katex { font-size: clamp(1.05rem, 1.55vw, 1.48rem) !important; color: #065f46 !important; }
+        .math-history .katex { font-size: clamp(0.85rem, 1.15vw, 1.12rem) !important; color: #475569 !important; }
+
+        .math-flow-line {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            overflow-x: auto;
+            padding: 0.15rem 0;
+        }
+        /* Celular en horizontal (pantallas bajas): la pizarra se vuelve desplazable y los controles quedan fijos abajo */
+        @media (orientation: landscape) and (max-height: 520px) {
+            .lab-root { overflow-y: auto !important; }
+            .lab-board { flex: none !important; overflow: clip !important; }
+            .lab-split { flex: none !important; height: calc(100dvh - 1.5rem); }
+            .lab-enun { padding-top: 0.35rem !important; padding-bottom: 0.35rem !important; }
+            .lab-enun .math-enunciado { font-size: 0.85rem !important; }
+            .lab-robot { padding-top: 0.3rem !important; padding-bottom: 0.3rem !important; }
+            .lab-controls { position: sticky; bottom: 0; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, memo } = React;
+
+        // =========================================================================
+        // 1. ICONOS SVG INLINE
+        // =========================================================================
+        const Icon = ({ paths, className = "", size = 24, fill = "none", strokeWidth = "2.5" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className} dangerouslySetInnerHTML={{ __html: paths }} />
+        );
+
+        const VolumeX = (p) => <Icon {...p} paths='<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>' />;
+        const Volume2 = (p) => <Icon {...p} paths='<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>' />;
+        const Rocket = (p) => <Icon {...p} paths='<path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>' />;
+        const Sparkles = (p) => <Icon {...p} paths='<path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M3 5h4"/><path d="M19 3v4"/><path d="M17 5h4"/>' />;
+        const Home = (p) => <Icon {...p} paths='<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>' />;
+        const ChevronLeft = (p) => <Icon {...p} paths='<polyline points="15 18 9 12 15 6"/>' />;
+        const ChevronRight = (p) => <Icon {...p} paths='<polyline points="9 18 15 12 9 6"/>' />;
+        const BoxIcon = (p) => <Icon {...p} paths='<path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>' />;
+
+        // =========================================================================
+        // 2. CONTROLADOR DE AUDIO (WEB AUDIO API)
+        // =========================================================================
+        const AudioController = {
+            ctx: null, muted: false, bgmNode: null,
+            init: function() {
+                if (this.ctx) return;
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (AudioContext) this.ctx = new AudioContext();
+            },
+            startBGM: function() {
+                if (!this.ctx) return;
+                if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
+                if (this.bgmNode) return;
+                const mainGain = this.ctx.createGain();
+                mainGain.gain.value = this.muted ? 0 : 0.05;
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.value = 760;
+                filter.connect(mainGain);
+                mainGain.connect(this.ctx.destination);
+                this.bgmNode = { mainGain, filter, interval: null };
+                const chords = [[55, 60, 64, 71], [52, 57, 64, 71], [53, 57, 60, 64], [50, 55, 59, 64]];
+                let chordIndex = 0;
+                const playChord = () => {
+                    if (this.ctx.state !== 'running') return;
+                    const chord = chords[chordIndex];
+                    chordIndex = (chordIndex + 1) % chords.length;
+                    chord.forEach((midi, i) => {
+                        const osc = this.ctx.createOscillator();
+                        const gain = this.ctx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.value = 440 * Math.pow(2, (midi - 69) / 12);
+                        const now = this.ctx.currentTime;
+                        const delay = i * 0.2;
+                        gain.gain.setValueAtTime(0, now + delay);
+                        gain.gain.linearRampToValueAtTime(0.14, now + delay + 2);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + delay + 7.5);
+                        osc.connect(gain);
+                        gain.connect(filter);
+                        osc.start(now + delay);
+                        osc.stop(now + delay + 7.5);
+                    });
+                };
+                playChord();
+                this.bgmNode.interval = setInterval(playChord, 6000);
+            },
+            play: function(type) {
+                if (this.muted || !this.ctx) return;
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                const now = this.ctx.currentTime;
+                if (type === 'pop') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(520, now);
+                    osc.frequency.exponentialRampToValueAtTime(840, now + 0.1);
+                    gain.gain.setValueAtTime(0.22, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                    osc.start(now);
+                    osc.stop(now + 0.1);
+                } else if (type === 'pop-reverse') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(640, now);
+                    osc.frequency.exponentialRampToValueAtTime(280, now + 0.12);
+                    gain.gain.setValueAtTime(0.18, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+                    osc.start(now);
+                    osc.stop(now + 0.12);
+                } else if (type === 'success') {
+                    osc.disconnect();
+                    const notes = [523.25, 659.25, 783.99, 1046.50];
+                    notes.forEach((freq, i) => {
+                        const o = this.ctx.createOscillator();
+                        const g = this.ctx.createGain();
+                        o.type = 'triangle';
+                        o.frequency.value = freq;
+                        o.connect(g);
+                        g.connect(this.ctx.destination);
+                        const startTime = now + (i * 0.07);
+                        g.gain.setValueAtTime(0, startTime);
+                        g.gain.linearRampToValueAtTime(0.18, startTime + 0.04);
+                        g.gain.linearRampToValueAtTime(0, startTime + 0.35);
+                        o.start(startTime);
+                        o.stop(startTime + 0.35);
+                    });
+                } else if (type === 'swoosh') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(280, now);
+                    osc.frequency.exponentialRampToValueAtTime(75, now + 0.18);
+                    gain.gain.setValueAtTime(0.18, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.18);
+                    osc.start(now);
+                    osc.stop(now + 0.18);
+                }
+            },
+            toggleMute: function() {
+                this.muted = !this.muted;
+                if (this.bgmNode && this.ctx) {
+                    this.bgmNode.mainGain.gain.setTargetAtTime(this.muted ? 0 : 0.05, this.ctx.currentTime, 0.1);
+                }
+                return this.muted;
+            }
+        };
+
+        // =========================================================================
+        // 3. COMPONENTE KATEX
+        // =========================================================================
+        const MathDisplay = memo(({ latex, className = "", inline = false, align = "left" }) => {
+            const containerRef = useRef(null);
+            useEffect(() => {
+                if (containerRef.current && window.katex) {
+                    try {
+                        window.katex.render(latex, containerRef.current, {
+                            displayMode: !inline,
+                            throwOnError: false,
+                            strict: false,
+                            trust: true
+                        });
+                    } catch (e) {
+                        containerRef.current.innerText = latex;
+                    }
+                }
+            }, [latex, inline]);
+
+            // Ajuste automático: si la fórmula es más ancha que su línea, se reduce (zoom) hasta 60 %
+            const wrapRef = useRef(null);
+            useEffect(() => {
+                if (inline) return;
+                const wrap = wrapRef.current, inner = containerRef.current;
+                if (!wrap || !inner) return;
+                const fit = () => {
+                    inner.style.zoom = 1;
+                    const avail = wrap.clientWidth, need = inner.scrollWidth;
+                    if (avail > 0 && need > avail) inner.style.zoom = Math.max(0.6, (avail - 2) / need);
+                };
+                fit();
+                const ro = new ResizeObserver(fit);
+                ro.observe(wrap);
+                return () => ro.disconnect();
+            }, [latex, inline]);
+
+            if (inline) return <span ref={containerRef} className={`inline-block align-middle ${className}`} />;
+            return (
+                <div ref={wrapRef} className={`math-flow-line scrollbar-hide ${align === 'center' ? 'justify-center' : 'justify-start'} ${className}`}>
+                    <div ref={containerRef} className={align === 'center' ? 'text-center' : 'text-left'} />
+                </div>
+            );
+        });
+
+        // =========================================================================
+        // 4. PIZARRA INTERACTIVA COMPLETA
+        // =========================================================================
+        const DrawingCanvas = () => {
+            const canvasRef = useRef(null);
+            const [isDrawing, setIsDrawing] = useState(false);
+            const [isDrawMode, setIsDrawMode] = useState(false);
+            const [tool, setTool] = useState('pen');
+            const [isSnapMode, setIsSnapMode] = useState(false);
+            const [penColor, setPenColor] = useState('#ef4444');
+            const [penWidth, setPenWidth] = useState(6);
+            const penPointsRef = useRef([]);
+            const activePointerRef = useRef(null);
+            const savedImageRef = useRef(null);
+            const startPosRef = useRef({ x: 0, y: 0 });
+            const historyRef = useRef([]);
+
+            const playPop = () => { AudioController.init(); AudioController.startBGM(); AudioController.play('pop'); };
+
+            useEffect(() => {
+                const canvas = canvasRef.current;
+                if (!canvas || !canvas.parentElement) return;
+                let rafId = null;
+                const updateSize = (entries) => {
+                    const entry = entries[entries.length - 1];
+                    if (!entry) return;
+                    const width = Math.floor(entry.contentRect.width);
+                    const height = Math.floor(entry.contentRect.height);
+                    if (width <= 0 || height <= 0) return;
+                    if (rafId) cancelAnimationFrame(rafId);
+                    rafId = requestAnimationFrame(() => {
+                        if (!canvas || (canvas.width === width && canvas.height === height)) return;
+                        const ctx = canvas.getContext('2d');
+                        let imgData = null;
+                        if (canvas.width > 0 && canvas.height > 0) {
+                            try { imgData = ctx.getImageData(0, 0, canvas.width, canvas.height); } catch (e) {}
+                        }
+                        canvas.width = width;
+                        canvas.height = height;
+                        if (imgData) ctx.putImageData(imgData, 0, 0);
+                    });
+                };
+                const observer = new ResizeObserver(updateSize);
+                observer.observe(canvas.parentElement);
+                return () => {
+                    if (rafId) cancelAnimationFrame(rafId);
+                    observer.disconnect();
+                };
+            }, []);
+
+            const renderPen = (points, straight = false) => {
+                const ctx = canvasRef.current.getContext('2d');
+                ctx.putImageData(savedImageRef.current, 0, 0);
+                const angle = -15 * Math.PI / 180;
+                const c = Math.cos(angle), s = Math.sin(angle);
+                const local = points.map(p => ({ x: c * p.x + s * p.y, y: (-s * p.x + c * p.y) / 0.5 }));
+                ctx.save();
+                ctx.transform(c, s, -0.5 * s, 0.5 * c, 0, 0);
+                ctx.lineWidth = penWidth;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.strokeStyle = penColor;
+                ctx.fillStyle = penColor;
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.beginPath();
+                ctx.moveTo(local[0].x, local[0].y);
+                if (local.length === 1) {
+                    ctx.arc(local[0].x, local[0].y, penWidth / 2, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    if (!straight) {
+                        for (let i = 1; i < local.length - 1; i++) {
+                            const midpoint = {
+                                x: (local[i].x + local[i + 1].x) / 2,
+                                y: (local[i].y + local[i + 1].y) / 2
+                            };
+                            ctx.quadraticCurveTo(local[i].x, local[i].y, midpoint.x, midpoint.y);
+                        }
+                    }
+                    const last = local[local.length - 1];
+                    ctx.lineTo(last.x, last.y);
+                    ctx.stroke();
+                }
+                ctx.restore();
+            };
+
+            const startDrawing = (e) => {
+                if (!isDrawMode || activePointerRef.current !== null || (e.pointerType === 'mouse' && e.button !== 0)) return;
+                const canvas = canvasRef.current;
+                const ctx = canvas.getContext('2d');
+                const rect = canvas.getBoundingClientRect();
+
+                historyRef.current.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.lineWidth = tool === 'highlighter' ? 24 : penWidth;
+                ctx.strokeStyle = tool === 'highlighter' ? `${penColor}4D` : penColor;
+                ctx.globalCompositeOperation = tool === 'highlighter' ? 'multiply' : 'source-over';
+
+                const startX = e.clientX - rect.left;
+                const startY = e.clientY - rect.top;
+
+                savedImageRef.current = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                startPosRef.current = { x: startX, y: startY };
+
+                ctx.beginPath();
+                ctx.moveTo(startX, startY);
+                penPointsRef.current = [{ x: startX, y: startY }];
+                activePointerRef.current = e.pointerId;
+                canvas.setPointerCapture(e.pointerId);
+                if (tool === 'pen') renderPen(penPointsRef.current);
+                setIsDrawing(true);
+            };
+
+            const draw = (e) => {
+                if (activePointerRef.current !== e.pointerId || !isDrawMode) return;
+                const canvas = canvasRef.current;
+                const ctx = canvas.getContext('2d');
+                const rect = canvas.getBoundingClientRect();
+                const currentX = e.clientX - rect.left;
+                const currentY = e.clientY - rect.top;
+
+                if (isSnapMode || e.shiftKey) {
+                    ctx.putImageData(savedImageRef.current, 0, 0);
+                    const dx = currentX - startPosRef.current.x;
+                    const dy = currentY - startPosRef.current.y;
+                    const angle = Math.atan2(dy, dx);
+                    const snappedAngle = Math.round(angle / (Math.PI / 4)) * (Math.PI / 4);
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const snapX = startPosRef.current.x + Math.cos(snappedAngle) * dist;
+                    const snapY = startPosRef.current.y + Math.sin(snappedAngle) * dist;
+                    if (tool === 'pen') {
+                        renderPen([startPosRef.current, { x: snapX, y: snapY }], true);
+                        return;
+                    }
+                    ctx.beginPath();
+                    ctx.moveTo(startPosRef.current.x, startPosRef.current.y);
+                    ctx.lineTo(snapX, snapY);
+                    ctx.stroke();
+                } else {
+                    if (tool === 'pen') {
+                        const events = e.nativeEvent?.getCoalescedEvents?.() || [];
+                        const samples = events.length ? events : [e];
+                        samples.forEach(sample => penPointsRef.current.push({
+                            x: sample.clientX - rect.left,
+                            y: sample.clientY - rect.top
+                        }));
+                        renderPen(penPointsRef.current);
+                        return;
+                    }
+                    if (tool === 'highlighter') ctx.putImageData(savedImageRef.current, 0, 0);
+                    ctx.lineTo(currentX, currentY);
+                    ctx.stroke();
+                }
+            };
+
+            const stopDrawing = () => {
+                const canvas = canvasRef.current;
+                const pointer = activePointerRef.current;
+                activePointerRef.current = null;
+                if (pointer !== null && canvas && canvas.hasPointerCapture(pointer)) {
+                    canvas.releasePointerCapture(pointer);
+                }
+                if (isDrawing && canvas) {
+                    canvas.getContext('2d').closePath();
+                    setIsDrawing(false);
+                }
+            };
+
+            const selectTool = (nextTool) => {
+                stopDrawing();
+                playPop();
+                const enabled = nextTool !== 'selector' && !(isDrawMode && tool === nextTool);
+                setIsDrawMode(enabled);
+                if (nextTool !== 'selector') setTool(nextTool);
+            };
+
+            useEffect(() => {
+                const onKey = (event) => {
+                    if (event.key === 'Escape') {
+                        setIsDrawing(false);
+                        setIsDrawMode(false);
+                    }
+                    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
+                        if (historyRef.current.length > 0 && canvasRef.current) {
+                            playPop();
+                            const lastState = historyRef.current.pop();
+                            canvasRef.current.getContext('2d').putImageData(lastState, 0, 0);
+                            savedImageRef.current = lastState;
+                        }
+                    }
+                };
+                window.addEventListener('keydown', onKey);
+                return () => window.removeEventListener('keydown', onKey);
+            }, []);
+
+            const clearCanvas = () => {
+                playPop();
+                const canvas = canvasRef.current;
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                historyRef.current.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                savedImageRef.current = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            };
+
+            const colors = [
+                { name: 'Rojo', hex: '#ef4444', tw: 'bg-[#ef4444]' },
+                { name: 'Negro', hex: '#0f172a', tw: 'bg-[#0f172a]' },
+                { name: 'Azul', hex: '#3b82f6', tw: 'bg-[#3b82f6]' },
+                { name: 'Verde', hex: '#22c55e', tw: 'bg-[#22c55e]' },
+                { name: 'Amarillo', hex: '#facc15', tw: 'bg-[#facc15]' }
+            ];
+
+            return (
+                <>
+                    <div style={{ zIndex: 120, pointerEvents: 'auto' }} className="absolute top-2 right-2 flex flex-wrap max-w-[calc(100%-1rem)] justify-end gap-1.5 bg-white/85 p-1.5 rounded-xl backdrop-blur-sm shadow-md border border-slate-200">
+                        <button onClick={() => selectTool('selector')} aria-pressed={!isDrawMode} title="Girar 3D / Selector (Esc)" className={`px-2.5 py-1 text-xs font-black rounded-lg border-2 shadow-sm transition-all ${!isDrawMode ? 'bg-cyan-500 text-white border-cyan-600' : 'bg-white text-slate-600 border-slate-300'}`}>🖱️ Girar 3D</button>
+                        <button onClick={() => selectTool('pen')} className={`px-2.5 py-1 text-xs font-black rounded-lg border-2 shadow-sm transition-all ${isDrawMode && tool === 'pen' ? 'bg-indigo-500 text-white border-indigo-600 scale-105' : 'bg-white text-slate-600 border-slate-300'}`}>🖊️ Lápiz</button>
+                        <button onClick={() => selectTool('highlighter')} className={`px-2.5 py-1 text-xs font-black rounded-lg border-2 shadow-sm transition-all ${isDrawMode && tool === 'highlighter' ? 'bg-yellow-400 text-slate-900 border-yellow-500 scale-105' : 'bg-white text-slate-600 border-slate-300'}`}>🖍️ Resaltador</button>
+                        {isDrawMode && tool === 'pen' && (
+                            <label className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white border-2 border-indigo-200 text-xs font-black text-slate-700">
+                                Grosor <input type="range" min="3" max="16" step="1" value={penWidth} onChange={e => setPenWidth(Number(e.target.value))} className="w-16 accent-indigo-600" />
+                            </label>
+                        )}
+                        {isDrawMode && (
+                            <>
+                                <button onClick={() => { playPop(); setIsSnapMode(!isSnapMode); }} className={`px-2.5 py-1 text-xs font-black rounded-lg border-2 shadow-sm transition-all ${isSnapMode ? 'bg-blue-500 text-white border-blue-600 scale-105' : 'bg-white text-slate-600 border-slate-300'}`}>📐 Recto</button>
+                                <button onClick={clearCanvas} className="px-2.5 py-1 text-xs font-black bg-white text-rose-600 border-2 border-rose-300 rounded-lg shadow-sm hover:bg-rose-50 active:scale-95 transition-all">🗑️ Limpiar</button>
+                                <div className="px-2 py-1 text-[11px] font-bold text-slate-400 hidden sm:flex items-center bg-white rounded-lg border border-slate-200">CTRL+Z</div>
+                            </>
+                        )}
+                    </div>
+                    {isDrawMode && (
+                        <div className="absolute top-1/2 right-3 -translate-y-1/2 z-[110] flex flex-col gap-2.5 p-2 bg-white/90 backdrop-blur-md rounded-xl border-[3px] border-slate-200 shadow-xl pointer-events-auto">
+                            {colors.map(c => (
+                                <button key={c.hex} onClick={() => { playPop(); setPenColor(c.hex); }} title={c.name} className={`w-8 h-8 rounded-full border-[3px] shadow-sm transition-all hover:scale-110 active:scale-95 ${c.tw} ${penColor === c.hex ? 'border-white outline outline-[3px] outline-slate-800 scale-110' : 'border-black/20'}`} />
+                            ))}
+                        </div>
+                    )}
+                    <canvas
+                        ref={canvasRef}
+                        style={{ zIndex: 100, pointerEvents: isDrawMode ? 'auto' : 'none', touchAction: isDrawMode ? 'none' : 'auto' }}
+                        className={`absolute inset-0 z-[100] touch-none ${isDrawMode ? 'cursor-crosshair pointer-events-auto' : 'pointer-events-none'}`}
+                        onPointerDown={startDrawing}
+                        onPointerMove={draw}
+                        onPointerUp={e => { if (activePointerRef.current === e.pointerId) { draw(e); stopDrawing(); } }}
+                        onPointerLeave={e => { if (!e.currentTarget.hasPointerCapture(e.pointerId)) stopDrawing(); }}
+                        onLostPointerCapture={stopDrawing}
+                        onPointerCancel={stopDrawing}
+                    />
+                </>
+            );
+        };
+
+        // =========================================================================
+        // 5. MOTOR GEOMÉTRICO 3D CON THREE.JS (EJERCICIOS 1 AL 12)
+        // =========================================================================
+        const createTextSprite = (text, bgColor = '#0f172a', textColor = '#fde047', scale = 1.15) => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 160;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Fondo redondeado llamativo
+            const r = 34;
+            ctx.fillStyle = bgColor;
+            ctx.beginPath();
+            ctx.moveTo(20 + r, 24);
+            ctx.lineTo(492 - r, 24);
+            ctx.quadraticCurveTo(492, 24, 492, 24 + r);
+            ctx.lineTo(492, 136 - r);
+            ctx.quadraticCurveTo(492, 136, 492 - r, 136);
+            ctx.lineTo(20 + r, 136);
+            ctx.quadraticCurveTo(20, 136, 20, 136 - r);
+            ctx.lineTo(20, 24 + r);
+            ctx.quadraticCurveTo(20, 24, 20 + r, 24);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.lineWidth = 8;
+            ctx.strokeStyle = '#ffffff';
+            ctx.stroke();
+
+            ctx.font = '900 54px Nunito, sans-serif';
+            ctx.fillStyle = textColor;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, 256, 82);
+
+            const texture = new THREE.CanvasTexture(canvas);
+            const material = new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false });
+            const sprite = new THREE.Sprite(material);
+            sprite.scale.set(scale * 2.1, scale * 0.66, 1);
+            sprite.renderOrder = 999;
+            return sprite;
+        };
+
+        const createThickEdge = (p1, p2, color, radius = 0.045) => {
+            const dir = new THREE.Vector3().subVectors(p2, p1);
+            const len = dir.length();
+            const geom = new THREE.CylinderGeometry(radius, radius, len, 10);
+            const mat = new THREE.MeshStandardMaterial({
+                color,
+                emissive: color,
+                emissiveIntensity: 0.35,
+                roughness: 0.25,
+                metalness: 0.15
+            });
+            const mesh = new THREE.Mesh(geom, mat);
+            mesh.position.copy(p1).add(p2).multiplyScalar(0.5);
+            mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
+            return mesh;
+        };
+
+        const createVertexSphere = (pos, color = 0xfacc15, radius = 0.11) => {
+            const mesh = new THREE.Mesh(
+                new THREE.SphereGeometry(radius, 18, 18),
+                new THREE.MeshStandardMaterial({
+                    color,
+                    emissive: color,
+                    emissiveIntensity: 0.4,
+                    roughness: 0.2
+                })
+            );
+            mesh.position.copy(pos);
+            return mesh;
+        };
+
+        // Construye un prisma regular de n lados con control independiente de bases, laterales, aristas y vértices
+        // Caras, aristas, vértices y divisiones comparten exactamente los mismos puntos (topPts y botPts)
+        const buildPrismGroup = ({
+            sides = 3,
+            radius = 1.45,
+            height = 2.4,
+            sideColor = 0x38bdf8,
+            sideOpacity = 0.45,
+            baseColor = 0x10b981,
+            baseOpacity = 0.45,
+            topEdgeColor = null,
+            bottomEdgeColor = null,
+            latEdgeColor = null,
+            edgeRadius = 0.045,
+            showVertices = false,
+            vertexColor = 0xfacc15,
+            divideTopBase = false
+        }) => {
+            const g = new THREE.Group();
+            const halfH = height / 2;
+
+            const topPts = [];
+            const botPts = [];
+            for (let i = 0; i < sides; i++) {
+                const ang = (i / sides) * Math.PI * 2 + Math.PI / sides;
+                const x = Math.sin(ang) * radius;
+                const z = Math.cos(ang) * radius;
+                topPts.push(new THREE.Vector3(x, halfH, z));
+                botPts.push(new THREE.Vector3(x, -halfH, z));
+            }
+
+            // Geometría exacta de las caras laterales usando topPts y botPts
+            const sideVerts = [];
+            const baseVerts = [];
+            const topCenter = new THREE.Vector3(0, halfH, 0);
+            const botCenter = new THREE.Vector3(0, -halfH, 0);
+            const defaultEdgeVerts = [];
+
+            for (let i = 0; i < sides; i++) {
+                const next = (i + 1) % sides;
+                const b1 = botPts[i], b2 = botPts[next];
+                const t1 = topPts[i], t2 = topPts[next];
+
+                // 2 triángulos por cara lateral (normal hacia afuera)
+                sideVerts.push(
+                    b1.x, b1.y, b1.z, b2.x, b2.y, b2.z, t2.x, t2.y, t2.z,
+                    b1.x, b1.y, b1.z, t2.x, t2.y, t2.z, t1.x, t1.y, t1.z
+                );
+
+                // Tapa superior (normal +Y) e inferior (normal -Y)
+                baseVerts.push(
+                    topCenter.x, topCenter.y, topCenter.z, t1.x, t1.y, t1.z, t2.x, t2.y, t2.z,
+                    botCenter.x, botCenter.y, botCenter.z, b2.x, b2.y, b2.z, b1.x, b1.y, b1.z
+                );
+
+                // Aristas base sutiles exactamente sobre los mismos vértices
+                defaultEdgeVerts.push(
+                    t1.x, t1.y, t1.z, t2.x, t2.y, t2.z,
+                    b1.x, b1.y, b1.z, b2.x, b2.y, b2.z,
+                    b1.x, b1.y, b1.z, t1.x, t1.y, t1.z
+                );
+            }
+
+            const sideGeom = new THREE.BufferGeometry();
+            sideGeom.setAttribute('position', new THREE.Float32BufferAttribute(sideVerts, 3));
+            sideGeom.computeVertexNormals();
+
+            const baseGeom = new THREE.BufferGeometry();
+            baseGeom.setAttribute('position', new THREE.Float32BufferAttribute(baseVerts, 3));
+            baseGeom.computeVertexNormals();
+
+            const sideMat = new THREE.MeshPhysicalMaterial({
+                color: sideColor,
+                transparent: true,
+                opacity: sideOpacity,
+                roughness: 0.25,
+                metalness: 0.05,
+                side: THREE.DoubleSide
+            });
+            const baseMat = new THREE.MeshPhysicalMaterial({
+                color: baseColor,
+                transparent: true,
+                opacity: baseOpacity,
+                roughness: 0.25,
+                metalness: 0.05,
+                side: THREE.DoubleSide
+            });
+
+            g.add(new THREE.Mesh(sideGeom, sideMat));
+            g.add(new THREE.Mesh(baseGeom, baseMat));
+
+            // Contorno exacto del prisma
+            const lineGeom = new THREE.BufferGeometry();
+            lineGeom.setAttribute('position', new THREE.Float32BufferAttribute(defaultEdgeVerts, 3));
+            g.add(new THREE.LineSegments(lineGeom, new THREE.LineBasicMaterial({ color: 0x0f172a, transparent: true, opacity: 0.55 })));
+
+            // Aristas resaltadas, vértices y divisiones de la base
+            for (let i = 0; i < sides; i++) {
+                const next = (i + 1) % sides;
+                if (topEdgeColor) g.add(createThickEdge(topPts[i], topPts[next], topEdgeColor, edgeRadius));
+                if (bottomEdgeColor) g.add(createThickEdge(botPts[i], botPts[next], bottomEdgeColor, edgeRadius));
+                if (latEdgeColor) g.add(createThickEdge(botPts[i], topPts[i], latEdgeColor, edgeRadius));
+                if (showVertices) {
+                    g.add(createVertexSphere(topPts[i], vertexColor, sides > 10 ? 0.065 : 0.11));
+                    g.add(createVertexSphere(botPts[i], vertexColor, sides > 10 ? 0.065 : 0.11));
+                }
+                if (divideTopBase) {
+                    g.add(createThickEdge(new THREE.Vector3(0, halfH + 0.015, 0), topPts[i], 0xfacc15, 0.032));
+                }
+            }
+
+            return { group: g, topPts, botPts };
+        };
+
+        // Construye la escena 3D completa según el ejercicio (1 al 12) y el paso actual
+        const buildExerciseScene3D = (exerciseId, step) => {
+            const root = new THREE.Group();
+
+            const makeTri = (a, b, c, color, opacity) => {
+                const geom = new THREE.BufferGeometry();
+                geom.setAttribute('position', new THREE.Float32BufferAttribute([
+                    a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z
+                ], 3));
+                geom.computeVertexNormals();
+                return new THREE.Mesh(geom, new THREE.MeshPhysicalMaterial({ color, transparent: true, opacity, side: THREE.DoubleSide, roughness: 0.25 }));
+            };
+            const addLabel = (text, bg, y, scale = 1.15, color = '#fde047', x = 0, z = 0) => {
+                const l = createTextSprite(text, bg, color, scale);
+                l.position.set(x, y, z);
+                root.add(l);
+                return l;
+            };
+
+            // EJERCICIO 1: Prisma pentagonal (15 aristas)
+            if (exerciseId === 1) {
+                const { group } = buildPrismGroup({
+                    sides: 5,
+                    radius: 1.45,
+                    height: 2.3,
+                    sideColor: 0x38bdf8,
+                    sideOpacity: step === 0 ? 0.32 : 0.28,
+                    baseColor: step === 0 ? 0x10b981 : 0x0ea5e9,
+                    baseOpacity: step === 0 ? 0.85 : 0.35,
+                    topEdgeColor: step >= 1 ? 0x06b6d4 : null,
+                    bottomEdgeColor: step >= 1 ? 0xf43f5e : null,
+                    latEdgeColor: step >= 2 ? 0xfacc15 : null,
+                    edgeRadius: 0.055,
+                    showVertices: step === 3,
+                    vertexColor: 0xffffff
+                });
+                root.add(group);
+                const labels = ['Base ⬠ (n = 5)', '5 arriba + 5 abajo', '5 aristas laterales', 'Total: 15 aristas'];
+                addLabel(labels[step], step === 3 ? '#065f46' : '#0f172a', 1.85, 1.12);
+                return root;
+            }
+
+            // EJERCICIO 2: Octaedro regular (C = 8, A = 12, V = 6)
+            if (exerciseId === 2) {
+                const octGeom = new THREE.OctahedronGeometry(1.8, 0);
+                root.add(new THREE.Mesh(octGeom, new THREE.MeshPhysicalMaterial({
+                    color: step === 0 || step === 3 ? 0x6366f1 : 0x818cf8,
+                    transparent: true,
+                    opacity: step === 0 || step === 3 ? 0.86 : 0.36,
+                    roughness: 0.25,
+                    metalness: 0.1,
+                    flatShading: true,
+                    side: THREE.DoubleSide
+                })));
+
+                const posAttr = octGeom.attributes.position;
+                const uniqueVerts = [];
+                const seen = new Set();
+                for (let i = 0; i < posAttr.count; i++) {
+                    const v = new THREE.Vector3().fromBufferAttribute(posAttr, i);
+                    const key = `${v.x.toFixed(3)},${v.y.toFixed(3)},${v.z.toFixed(3)}`;
+                    if (!seen.has(key)) { seen.add(key); uniqueVerts.push(v); }
+                }
+
+                const edgesGeom = new THREE.EdgesGeometry(octGeom, 1);
+                if (step >= 1) {
+                    const ePos = edgesGeom.attributes.position;
+                    for (let i = 0; i < ePos.count; i += 2) {
+                        const p1 = new THREE.Vector3().fromBufferAttribute(ePos, i);
+                        const p2 = new THREE.Vector3().fromBufferAttribute(ePos, i + 1);
+                        root.add(createThickEdge(p1, p2, step === 1 ? 0x06b6d4 : 0x38bdf8, step === 1 ? 0.05 : 0.03));
+                    }
+                } else {
+                    root.add(new THREE.LineSegments(edgesGeom, new THREE.LineBasicMaterial({ color: 0x1e1b4b, transparent: true, opacity: 0.6 })));
+                }
+
+                if (step >= 2) {
+                    uniqueVerts.forEach(v => root.add(createVertexSphere(v, 0xfacc15, step === 2 ? 0.15 : 0.11)));
+                }
+
+                const labels = ['C = 8 caras △', 'A = 12 aristas', 'V = 6 vértices', 'Octaedro Regular'];
+                addLabel(labels[step], step === 3 ? '#065f46' : '#312e81', 2.35);
+                return root;
+            }
+
+            // EJERCICIO 3: Prisma de 54 aristas (n = 18 → V = 36)
+            if (exerciseId === 3) {
+                const { group } = buildPrismGroup({
+                    sides: 18,
+                    radius: 1.62,
+                    height: 2.1,
+                    sideColor: 0x3b82f6,
+                    sideOpacity: 0.35,
+                    baseColor: step === 1 ? 0x10b981 : 0x0ea5e9,
+                    baseOpacity: step === 1 ? 0.88 : 0.42,
+                    topEdgeColor: step === 1 ? 0xfacc15 : 0x38bdf8,
+                    bottomEdgeColor: step === 0 ? 0xf43f5e : null,
+                    latEdgeColor: step === 0 ? 0x22d3ee : null,
+                    edgeRadius: 0.03,
+                    showVertices: step === 2,
+                    vertexColor: 0xfacc15
+                });
+                root.add(group);
+                const labels = ['A = 54 aristas', 'Base: n = 18 lados', 'V = 2(18) = 36 vértices'];
+                addLabel(labels[step], step === 2 ? '#065f46' : '#1e3a8a', 1.72);
+                return root;
+            }
+
+            // EJERCICIO 4: Prisma de 16 vértices (octogonal → 24 aristas)
+            if (exerciseId === 4) {
+                const { group } = buildPrismGroup({
+                    sides: 8,
+                    radius: 1.5,
+                    height: 2.2,
+                    sideColor: 0xa855f7,
+                    sideOpacity: 0.3,
+                    baseColor: step === 1 ? 0x10b981 : 0x38bdf8,
+                    baseOpacity: step === 1 ? 0.88 : 0.36,
+                    topEdgeColor: step === 2 ? 0x06b6d4 : (step === 1 ? 0xfacc15 : 0x312e81),
+                    bottomEdgeColor: step === 2 ? 0xf43f5e : 0x312e81,
+                    latEdgeColor: step === 2 ? 0xfacc15 : 0x312e81,
+                    edgeRadius: step === 2 ? 0.045 : 0.028,
+                    showVertices: step === 0,
+                    vertexColor: 0xfacc15
+                });
+                root.add(group);
+                const labels = ['V = 16 (8 arriba + 8 abajo)', 'Base octogonal: n = 8', 'A = 3(8) = 24 aristas'];
+                addLabel(labels[step], step === 2 ? '#065f46' : '#581c87', 1.8);
+                return root;
+            }
+
+            // EJERCICIO 5: Prisma de 9 caras (heptagonal → 14 vértices)
+            if (exerciseId === 5) {
+                const { group } = buildPrismGroup({
+                    sides: 7,
+                    radius: 1.52,
+                    height: 2.15,
+                    sideColor: step === 0 ? 0x6366f1 : 0x818cf8,
+                    sideOpacity: step === 0 ? 0.78 : 0.3,
+                    baseColor: step <= 1 ? 0x10b981 : 0x38bdf8,
+                    baseOpacity: step <= 1 ? 0.86 : 0.34,
+                    topEdgeColor: step === 1 ? 0xfacc15 : 0x312e81,
+                    bottomEdgeColor: 0x312e81,
+                    latEdgeColor: 0x312e81,
+                    edgeRadius: step === 1 ? 0.045 : 0.026,
+                    showVertices: step === 2,
+                    vertexColor: 0xfacc15
+                });
+                root.add(group);
+                const labels = ['C = 9 caras', 'Base: n = 7 lados', 'V = 2(7) = 14 vértices'];
+                addLabel(labels[step], step === 2 ? '#065f46' : '#312e81', 1.78);
+                return root;
+            }
+
+            // EJERCICIO 6: Puntos medios de un tetraedro regular (→ octaedro, 8 caras)
+            if (exerciseId === 6) {
+                const s = 1.2;
+                const T = [
+                    new THREE.Vector3(s, s, s), new THREE.Vector3(s, -s, -s),
+                    new THREE.Vector3(-s, s, -s), new THREE.Vector3(-s, -s, s)
+                ];
+                const faces = [[0, 1, 2], [0, 1, 3], [0, 2, 3], [1, 2, 3]];
+                const mid = (i, j) => T[i].clone().add(T[j]).multiplyScalar(0.5);
+
+                // Tetraedro exterior translúcido
+                if (step === 0) faces.forEach(f => root.add(makeTri(T[f[0]], T[f[1]], T[f[2]], 0x94a3b8, 0.25)));
+                for (let i = 0; i < 4; i++) {
+                    for (let j = i + 1; j < 4; j++) {
+                        root.add(createThickEdge(T[i], T[j], 0x334155, 0.022));
+                        root.add(createVertexSphere(mid(i, j), 0xf43f5e, step === 0 ? 0.11 : 0.075));
+                    }
+                }
+
+                // 4 triángulos sobre las caras del tetraedro
+                if (step >= 1) {
+                    const op = step === 1 || step === 3 ? 0.85 : 0.4;
+                    faces.forEach(([a, b, c]) => {
+                        const m1 = mid(a, b), m2 = mid(b, c), m3 = mid(a, c);
+                        root.add(makeTri(m1, m2, m3, 0x06b6d4, op));
+                        root.add(createThickEdge(m1, m2, 0x0f172a, 0.025));
+                        root.add(createThickEdge(m2, m3, 0x0f172a, 0.025));
+                        root.add(createThickEdge(m3, m1, 0x0f172a, 0.025));
+                    });
+                }
+                // 4 triángulos frente a cada vértice
+                if (step >= 2) {
+                    for (let v = 0; v < 4; v++) {
+                        const others = [0, 1, 2, 3].filter(k => k !== v);
+                        root.add(makeTri(mid(v, others[0]), mid(v, others[1]), mid(v, others[2]), 0xf59e0b, 0.88));
+                    }
+                }
+
+                const labels = ['6 puntos medios', '4 triángulos (caras)', '4 triángulos (vértices)', 'Octaedro: 8 caras'];
+                addLabel(labels[step], step === 3 ? '#065f46' : '#9f1239', 2.15);
+                return root;
+            }
+
+            // EJERCICIO 7: Prisma hexagonal regular (a = 6, h = 7, AL = 252)
+            if (exerciseId === 7) {
+                const R = 1.5;
+                const H = R * 7 / 6;
+                const { group, topPts } = buildPrismGroup({
+                    sides: 6,
+                    radius: R,
+                    height: H,
+                    sideColor: step === 3 ? 0x10b981 : 0x38bdf8,
+                    sideOpacity: step === 3 ? 0.85 : 0.3,
+                    baseColor: step <= 1 ? 0x10b981 : 0x0ea5e9,
+                    baseOpacity: step <= 1 ? 0.85 : 0.4,
+                    topEdgeColor: step === 1 ? 0xfacc15 : null,
+                    latEdgeColor: step >= 2 ? 0xf43f5e : null,
+                    edgeRadius: 0.048,
+                    divideTopBase: step === 1
+                });
+                root.add(group);
+                const labels = ['AB = 54√3 cm²', 'a = 6 cm', 'h = 7 cm', 'AL = 252 cm²'];
+                addLabel(labels[step], step === 3 ? '#065f46' : '#0f172a', H / 2 + 0.6, 1.12);
+                if (step >= 2) {
+                    addLabel('h = 7 cm', '#be123c', 0, 0.82, '#ffffff', topPts[0].x + 0.85, topPts[0].z);
+                }
+                return root;
+            }
+
+            // EJERCICIO 8: Prisma triangular de caras cuadradas (a = 10, AL = 300, 2AB = 50√3)
+            if (exerciseId === 8) {
+                const rTri = 1.35;
+                const hSq = rTri * Math.sqrt(3);
+                const { group } = buildPrismGroup({
+                    sides: 3,
+                    radius: rTri,
+                    height: hSq,
+                    sideColor: step <= 1 ? 0x3b82f6 : 0x60a5fa,
+                    sideOpacity: step === 1 || step === 3 ? 0.82 : 0.42,
+                    baseColor: step >= 2 ? 0x10b981 : 0x94a3b8,
+                    baseOpacity: step >= 2 ? 0.88 : 0.3,
+                    topEdgeColor: step === 0 || step === 2 ? 0xfacc15 : null,
+                    latEdgeColor: step === 0 ? 0xfacc15 : null,
+                    edgeRadius: 0.05
+                });
+                root.add(group);
+                const labels = ['Lado a = 10 cm', 'AL = 300 cm²', '2AB = 50√3 cm²', 'AT = (300 + 50√3) cm²'];
+                addLabel(labels[step], step === 3 ? '#065f46' : '#92400e', hSq / 2 + 0.65);
+                return root;
+            }
+
+            // EJERCICIO 9: Rectoedro (a = 7, b = 3, h = 10 → AL = 200 cm²)
+            if (exerciseId === 9) {
+                const k = 0.24;
+                const w = 7 * k, h = 10 * k, d = 3 * k;
+                const hw = w / 2, hh = h / 2, hd = d / 2;
+                const latMat = new THREE.MeshPhysicalMaterial({
+                    color: step === 3 ? 0x0ea5e9 : 0x38bdf8, transparent: true,
+                    opacity: step === 3 ? 0.86 : 0.34, roughness: 0.25, side: THREE.DoubleSide
+                });
+                const baseMat = new THREE.MeshPhysicalMaterial({
+                    color: step <= 2 ? 0x10b981 : 0x94a3b8, transparent: true,
+                    opacity: step <= 2 ? 0.84 : 0.32, roughness: 0.25, side: THREE.DoubleSide
+                });
+                const boxGeom = new THREE.BoxGeometry(w, h, d);
+                // Orden de caras en BoxGeometry: +x, -x, +y (tapa), -y (base), +z, -z
+                root.add(new THREE.Mesh(boxGeom, [latMat, latMat, baseMat, baseMat, latMat, latMat]));
+                root.add(new THREE.LineSegments(
+                    new THREE.EdgesGeometry(boxGeom),
+                    new THREE.LineBasicMaterial({ color: 0x0f172a, transparent: true, opacity: 0.55 })
+                ));
+                const bPts = [
+                    new THREE.Vector3(-hw, -hh, hd), new THREE.Vector3(hw, -hh, hd),
+                    new THREE.Vector3(hw, -hh, -hd), new THREE.Vector3(-hw, -hh, -hd)
+                ];
+                const tPts = bPts.map(p => new THREE.Vector3(p.x, hh, p.z));
+                if (step === 1 || step === 2) {
+                    for (let i = 0; i < 4; i++) root.add(createThickEdge(bPts[i], bPts[(i + 1) % 4], 0xfacc15, 0.052));
+                }
+                if (step === 0 || step === 3) {
+                    root.add(createThickEdge(bPts[1], tPts[1], 0xf43f5e, 0.055));
+                }
+                const labels = ['V = 210 cm³ • h = 10', 'Base: 7 cm × 3 cm', 'PB = 20 cm', 'AL = 200 cm²'];
+                addLabel(labels[step], step === 3 ? '#065f46' : '#0369a1', hh + 0.6, 1.12);
+                if (step === 0 || step === 3) {
+                    addLabel('h = 10 cm', '#be123c', 0, 0.78, '#ffffff', hw + 0.75, hd);
+                }
+                if (step >= 1) {
+                    addLabel('a = 7 cm', '#0f172a', -hh - 0.35, 0.78, '#fde047', 0, hd + 0.25);
+                    addLabel('b = 3 cm', '#0f172a', -hh - 0.15, 0.78, '#38bdf8', hw + 0.65, 0);
+                }
+                return root;
+            }
+
+            // EJERCICIO 10: Prisma pentagonal regular (a = 9, h = 18, PB = 45, AL = 810)
+            if (exerciseId === 10) {
+                const R = 1.02;
+                const side = 2 * R * Math.sin(Math.PI / 5);
+                const H = side * 2;
+                const { group } = buildPrismGroup({
+                    sides: 5,
+                    radius: R,
+                    height: H,
+                    sideColor: step === 3 ? 0xa855f7 : 0xc084fc,
+                    sideOpacity: step === 3 ? 0.84 : 0.32,
+                    baseColor: step === 2 ? 0x10b981 : 0x38bdf8,
+                    baseOpacity: step === 2 ? 0.85 : 0.4,
+                    topEdgeColor: step <= 2 ? 0x06b6d4 : null,
+                    bottomEdgeColor: step === 2 ? 0x06b6d4 : null,
+                    latEdgeColor: step <= 1 || step === 3 ? 0xfacc15 : null,
+                    edgeRadius: 0.05
+                });
+                root.add(group);
+                const labels = ['h = 2a ; h + a = 27', 'a = 9 cm • h = 18 cm', 'PB = 45 cm', 'AL = 810 cm²'];
+                addLabel(labels[step], step === 3 ? '#065f46' : '#701a75', H / 2 + 0.6);
+                return root;
+            }
+
+            // EJERCICIO 11: Comparación de cubos (a₁ = 6 cm → a₂ = 12 cm → AT = 864 cm²)
+            if (exerciseId === 11) {
+                const buildCube = (size, latColor, latOp, baseColor, baseOp, edgeColor) => {
+                    const g = new THREE.Group();
+                    const geom = new THREE.BoxGeometry(size, size, size);
+                    const lMat = new THREE.MeshPhysicalMaterial({ color: latColor, transparent: true, opacity: latOp, roughness: 0.25, side: THREE.DoubleSide });
+                    const bMat = new THREE.MeshPhysicalMaterial({ color: baseColor, transparent: true, opacity: baseOp, roughness: 0.25, side: THREE.DoubleSide });
+                    g.add(new THREE.Mesh(geom, [lMat, lMat, bMat, bMat, lMat, lMat]));
+                    g.add(new THREE.LineSegments(new THREE.EdgesGeometry(geom), new THREE.LineBasicMaterial({ color: edgeColor })));
+                    return g;
+                };
+                if (step === 0) {
+                    root.add(buildCube(1.6, 0x38bdf8, 0.72, 0x0284c7, 0.72, 0x0f172a));
+                    addLabel('Cubo 1: a₁ = 6 cm', '#0c4a6e', 1.45, 1.1);
+                } else {
+                    const s1 = 1.0;
+                    const s2 = s1 * 2;
+                    const c1 = buildCube(s1, 0x38bdf8, 0.65, 0x0284c7, 0.65, 0x0f172a);
+                    c1.position.set(-1.8, -(s2 - s1) / 2, 0);
+                    root.add(c1);
+                    const c2 = step === 2
+                        ? buildCube(s2, 0x10b981, 0.88, 0x10b981, 0.88, 0x0f172a)
+                        : buildCube(s2, 0xf97316, 0.65, 0x94a3b8, 0.55, 0x0f172a);
+                    c2.position.set(0.9, 0, 0);
+                    root.add(c2);
+                    addLabel('a₁ = 6', '#0c4a6e', -(s2 - s1) / 2 + s1 / 2 + 0.45, 0.78, "#ffffff", -1.8);
+                    addLabel(step === 2 ? 'AT = 864 cm²' : 'a₂ = 12 cm (×2)', step === 2 ? '#065f46' : '#9a3412', s2 / 2 + 0.62, 1.15, "#fde047", 0.9);
+                }
+                return root;
+            }
+
+            // EJERCICIO 12: Tetraedro regular (6a = 54 → a = 9, Ac = 81√3/4, AT = 81√3)
+            if (exerciseId === 12) {
+                const R = 1.75;
+                const h = R * Math.sqrt(2);
+                const yBase = -h / 3;
+                const p0 = new THREE.Vector3(0, yBase + h, 0);
+                const basePts = [0, 1, 2].map(i => {
+                    const ang = (i / 3) * Math.PI * 2 + Math.PI / 6;
+                    return new THREE.Vector3(Math.cos(ang) * R, yBase, Math.sin(ang) * R);
+                });
+                root.add(makeTri(basePts[0], basePts[1], basePts[2], step === 3 ? 0x10b981 : 0x14b8a6, step === 3 ? 0.88 : 0.42));
+                root.add(makeTri(p0, basePts[0], basePts[1], step === 2 ? 0xf59e0b : (step === 3 ? 0x10b981 : 0x14b8a6), step >= 2 ? 0.88 : 0.48));
+                root.add(makeTri(p0, basePts[1], basePts[2], step === 3 ? 0x10b981 : 0x2dd4bf, step === 3 ? 0.85 : 0.42));
+                root.add(makeTri(p0, basePts[2], basePts[0], step === 3 ? 0x10b981 : 0x2dd4bf, step === 3 ? 0.85 : 0.42));
+                for (let i = 0; i < 3; i++) {
+                    const next = (i + 1) % 3;
+                    const all = step <= 1;
+                    const faceEdge = step === 2 && i === 0;
+                    const latFace = step === 2 && i < 2;
+                    root.add(createThickEdge(basePts[i], basePts[next], all || faceEdge ? 0xfacc15 : 0x0f172a, all || faceEdge ? 0.056 : 0.032));
+                    root.add(createThickEdge(p0, basePts[i], all || latFace ? 0xfacc15 : 0x0f172a, all || latFace ? 0.056 : 0.032));
+                }
+                const lbls = ['6 aristas iguales', 'a = 54 ÷ 6 = 9 cm', '1 cara = 81√3/4', 'AT = 81√3 cm²'];
+                addLabel(lbls[step], step === 3 ? '#065f46' : '#115e59', yBase + h + 0.55, 1.1);
+                return root;
+            }
+
+            return root;
+        };
+
+
+        // =========================================================================
+        // 6. COMPONENTE VISOR 3D INTERACTIVO (THREE.JS)
+        // =========================================================================
+        const ThreeScene3D = memo(({ exerciseId, step, hudCaption }) => {
+            const mountRef = useRef(null);
+            const meshGroupRef = useRef(null);
+            const rotationRef = useRef({ x: 0.36, y: 0.58 });
+            const isDraggingRef = useRef(false);
+            const prevPointerRef = useRef({ x: 0, y: 0 });
+            const autoRotateRef = useRef(true);
+            const targetZoomRef = useRef(6.4);
+            const [autoRotate, setAutoRotate] = useState(true);
+
+            useEffect(() => {
+                autoRotateRef.current = autoRotate;
+            }, [autoRotate]);
+
+            useEffect(() => {
+                const container = mountRef.current;
+                if (!container || !window.THREE) return;
+
+                const scene = new THREE.Scene();
+                const camera = new THREE.PerspectiveCamera(
+                    42,
+                    container.clientWidth / Math.max(container.clientHeight, 1),
+                    0.1,
+                    100
+                );
+                camera.position.set(0, 0.3, targetZoomRef.current);
+
+                const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+                renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+                renderer.domElement.style.width = '100%';
+                renderer.domElement.style.height = '100%';
+                renderer.domElement.style.display = 'block';
+                renderer.setSize(container.clientWidth, Math.max(container.clientHeight, 1), false);
+                container.innerHTML = '';
+                container.appendChild(renderer.domElement);
+
+                // Iluminación de estudio vibrante
+                scene.add(new THREE.AmbientLight(0xffffff, 0.78));
+                const keyLight = new THREE.DirectionalLight(0xffffff, 0.9);
+                keyLight.position.set(5, 8, 7);
+                scene.add(keyLight);
+                const fillLight = new THREE.DirectionalLight(0x93c5fd, 0.45);
+                fillLight.position.set(-6, -3, -5);
+                scene.add(fillLight);
+
+                const holder = new THREE.Group();
+                scene.add(holder);
+                meshGroupRef.current = holder;
+
+                // ResizeObserver diferido con requestAnimationFrame para evitar bucles de layout
+                let resizeRafId = null;
+                let lastW = container.clientWidth;
+                let lastH = container.clientHeight;
+                const resizeObserver = new ResizeObserver((entries) => {
+                    const entry = entries[entries.length - 1];
+                    if (!entry) return;
+                    const width = Math.floor(entry.contentRect.width);
+                    const height = Math.floor(entry.contentRect.height);
+                    if (width <= 0 || height <= 0 || (width === lastW && height === lastH)) return;
+                    if (resizeRafId) cancelAnimationFrame(resizeRafId);
+                    resizeRafId = requestAnimationFrame(() => {
+                        lastW = width;
+                        lastH = height;
+                        camera.aspect = width / height;
+                        camera.updateProjectionMatrix();
+                        renderer.setSize(width, height, false);
+                    });
+                });
+                resizeObserver.observe(container);
+
+                let frameId = null;
+                const animate = () => {
+                    frameId = requestAnimationFrame(animate);
+                    if (!isDraggingRef.current && autoRotateRef.current) {
+                        rotationRef.current.y += 0.0075;
+                    }
+                    holder.rotation.x += (rotationRef.current.x - holder.rotation.x) * 0.14;
+                    holder.rotation.y += (rotationRef.current.y - holder.rotation.y) * 0.14;
+                    camera.position.z += (targetZoomRef.current - camera.position.z) * 0.12;
+                    renderer.render(scene, camera);
+                };
+                animate();
+
+                return () => {
+                    if (frameId) cancelAnimationFrame(frameId);
+                    if (resizeRafId) cancelAnimationFrame(resizeRafId);
+                    resizeObserver.disconnect();
+                    renderer.dispose();
+                };
+            }, []);
+
+            // Actualiza el sólido 3D cada vez que cambia el ejercicio o el paso
+            useEffect(() => {
+                const holder = meshGroupRef.current;
+                if (!holder) return;
+                while (holder.children.length > 0) {
+                    const child = holder.children[0];
+                    holder.remove(child);
+                }
+                const solid = buildExerciseScene3D(exerciseId, step);
+                holder.add(solid);
+            }, [exerciseId, step]);
+
+            // Eventos de arrastre (mouse y touch)
+            const onPointerDown = (e) => {
+                isDraggingRef.current = true;
+                prevPointerRef.current = { x: e.clientX, y: e.clientY };
+                e.currentTarget.setPointerCapture(e.pointerId);
+            };
+            const onPointerMove = (e) => {
+                if (!isDraggingRef.current) return;
+                const dx = e.clientX - prevPointerRef.current.x;
+                const dy = e.clientY - prevPointerRef.current.y;
+                rotationRef.current.y += dx * 0.011;
+                rotationRef.current.x = Math.max(-1.25, Math.min(1.25, rotationRef.current.x + dy * 0.011));
+                prevPointerRef.current = { x: e.clientX, y: e.clientY };
+            };
+            const onPointerUp = (e) => {
+                isDraggingRef.current = false;
+                if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+                    e.currentTarget.releasePointerCapture(e.pointerId);
+                }
+            };
+            const onWheel = (e) => {
+                targetZoomRef.current = Math.max(4.4, Math.min(9.5, targetZoomRef.current + e.deltaY * 0.004));
+            };
+
+            const resetView = () => {
+                AudioController.play('pop');
+                rotationRef.current = { x: 0.36, y: 0.58 };
+                targetZoomRef.current = 6.4;
+            };
+
+            return (
+                <div className="w-full h-full flex flex-col relative select-none">
+                    {/* Lienzo WebGL 3D interactivo */}
+                    <div
+                        ref={mountRef}
+                        onPointerDown={onPointerDown}
+                        onPointerMove={onPointerMove}
+                        onPointerUp={onPointerUp}
+                        onPointerCancel={onPointerUp}
+                        onWheel={onWheel}
+                        className="w-full flex-1 cursor-grab active:cursor-grabbing touch-none rounded-2xl bg-[radial-gradient(circle_at_center,_#f8fafc_0%,_#e2e8f0_100%)] border-2 border-slate-200/80 shadow-inner overflow-hidden"
+                    />
+
+                    {/* Controles flotantes del Visor 3D */}
+                    <div className="absolute bottom-3 left-3 right-3 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
+                        <div className="px-3 py-1.5 rounded-xl bg-slate-900/85 backdrop-blur-md text-yellow-300 text-[11px] sm:text-xs font-extrabold shadow-md border border-white/15">
+                            🖱️ Arrastra para girar en 3D • {hudCaption}
+                        </div>
+                        <div className="flex items-center gap-1.5 pointer-events-auto">
+                            <button
+                                onClick={() => { AudioController.play('pop'); setAutoRotate(r => !r); }}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-black shadow-sm border transition-all active:scale-95 ${autoRotate ? 'bg-indigo-600 text-white border-indigo-400' : 'bg-white text-slate-700 border-slate-300'}`}
+                            >
+                                {autoRotate ? '⏸️ Girando' : '▶️ Girar'}
+                            </button>
+                            <button
+                                onClick={() => { targetZoomRef.current = Math.max(4.4, targetZoomRef.current - 0.7); }}
+                                title="Acercar"
+                                className="w-7 h-7 rounded-lg bg-white text-slate-800 font-black text-sm border border-slate-300 shadow-sm hover:bg-slate-100 active:scale-95"
+                            >
+                                +
+                            </button>
+                            <button
+                                onClick={() => { targetZoomRef.current = Math.min(9.5, targetZoomRef.current + 0.7); }}
+                                title="Alejar"
+                                className="w-7 h-7 rounded-lg bg-white text-slate-800 font-black text-sm border border-slate-300 shadow-sm hover:bg-slate-100 active:scale-95"
+                            >
+                                −
+                            </button>
+                            <button
+                                onClick={resetView}
+                                title="Centrar vista 3D"
+                                className="px-2.5 py-1 rounded-lg bg-white text-slate-700 font-black text-xs border border-slate-300 shadow-sm hover:bg-slate-100 active:scale-95"
+                            >
+                                🔄 Centrar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        });
+
+        // =========================================================================
+        // 7. BASE DE DATOS DE LOS 12 EJERCICIOS (EJERCICIOS 1 AL 12)
+        // =========================================================================
+        const EXERCISES = [
+            // ================= BLOQUE 1: POLIEDROS Y PRISMAS (1 AL 6) =================
+            {
+                id: 1,
+                block: 1,
+                title: "Ejercicio 1",
+                subtitle: "Prisma pentagonal",
+                cardGradient: "from-cyan-500/55 to-blue-700/55",
+                badgeColor: "bg-cyan-600",
+                previewLatex: String.raw`A = 3(5) = 15`,
+                enunciado: () => <span>¿Cuántas aristas tiene un <strong>prisma pentagonal</strong>?</span>,
+                steps: [
+                    {
+                        badge: "1. Identificamos la base",
+                        latex: String.raw`\text{Base: pentágono} \implies n = 5 \text{ lados}`,
+                        hud: "Base pentagonal resaltada",
+                        robotSpeech: "Un prisma pentagonal tiene dos bases en forma de pentágono, por eso el número de lados de la base es n = 5."
+                    },
+                    {
+                        badge: "2. Aristas en las 2 bases",
+                        latex: String.raw`\text{Base superior: } 5 \quad ; \quad \text{Base inferior: } 5`,
+                        hud: "5 aristas arriba + 5 abajo",
+                        robotSpeech: "Observa el sólido 3D: hay 5 aristas cian en la base superior y 5 aristas rosadas en la base inferior."
+                    },
+                    {
+                        badge: "3. Aristas laterales",
+                        latex: String.raw`\text{Aristas laterales: } 5`,
+                        hud: "5 aristas laterales doradas",
+                        robotSpeech: "Además, 5 aristas laterales doradas unen cada vértice de la base superior con su vértice de la base inferior."
+                    },
+                    {
+                        badge: "4. Total de aristas",
+                        latex: String.raw`A = 3n = 3(5) = \mathbf{15 \text{ aristas}}`,
+                        hud: "Total: 15 aristas",
+                        robotSpeech: "¡Excelente! En todo prisma A = 3n. Por lo tanto, el prisma pentagonal tiene 5 + 5 + 5 = 15 aristas."
+                    }
+                ]
+            },
+            {
+                id: 2,
+                block: 1,
+                title: "Ejercicio 2",
+                subtitle: "Teorema de Euler",
+                cardGradient: "from-indigo-500/55 to-violet-700/55",
+                badgeColor: "bg-indigo-600",
+                previewLatex: String.raw`8 + V = 12 + 2 \to 6`,
+                enunciado: () => <span>Un poliedro regular tiene <strong>8 caras</strong> y <strong>12 aristas</strong>. ¿Cuántos vértices tiene y de qué poliedro se trata?</span>,
+                steps: [
+                    {
+                        badge: "1. Datos: Caras",
+                        latex: String.raw`C = 8 \text{ caras triangulares}`,
+                        hud: "8 caras iluminadas",
+                        robotSpeech: "Gira la figura 3D y cuenta sus caras: el poliedro tiene C = 8 caras, todas triángulos equiláteros."
+                    },
+                    {
+                        badge: "2. Datos: Aristas",
+                        latex: String.raw`A = 12 \text{ aristas}`,
+                        hud: "12 aristas en cian",
+                        robotSpeech: "Ahora iluminamos en cian todas las aristas: son A = 12 aristas."
+                    },
+                    {
+                        badge: "3. Teorema de Euler",
+                        latex: String.raw`C + V = A + 2 \implies 8 + V = 12 + 2 \implies V = 6`,
+                        hud: "6 vértices dorados",
+                        robotSpeech: "Aplicamos el Teorema de Euler: C + V = A + 2. Despejando obtenemos V = 14 − 8 = 6 vértices."
+                    },
+                    {
+                        badge: "4. Respuesta",
+                        latex: String.raw`V = 6 \text{ vértices} \implies \mathbf{\text{Octaedro}}`,
+                        hud: "Octaedro regular",
+                        robotSpeech: "¡Bravo! El poliedro regular con 8 caras triangulares, 6 vértices y 12 aristas es el Octaedro."
+                    }
+                ]
+            },
+            {
+                id: 3,
+                block: 1,
+                title: "Ejercicio 3",
+                subtitle: "Prisma de 54 aristas",
+                cardGradient: "from-blue-500/55 to-sky-700/55",
+                badgeColor: "bg-blue-600",
+                previewLatex: String.raw`3n = 54 \to V = 36`,
+                enunciado: () => <span>Un prisma tiene en total <strong>54 aristas</strong>. ¿Cuántos <strong>vértices</strong> tiene?</span>,
+                steps: [
+                    {
+                        badge: "1. Dato del problema",
+                        latex: String.raw`\text{Total de aristas: } A = 54`,
+                        hud: "Prisma con 54 aristas",
+                        robotSpeech: "Tenemos un prisma de muchos lados con 54 aristas en total. Llamemos n al número de lados de una base."
+                    },
+                    {
+                        badge: "2. Lados de la base",
+                        latex: String.raw`A = 3n \implies 3n = 54 \implies n = \dfrac{54}{3} = 18`,
+                        hud: "Base iluminada de 18 lados",
+                        robotSpeech: "Todo prisma tiene n aristas arriba, n abajo y n laterales: 3n = 54, así que cada base tiene n = 18 lados."
+                    },
+                    {
+                        badge: "3. Total de vértices",
+                        latex: String.raw`V = 2n = 2(18) = \mathbf{36 \text{ vértices}}`,
+                        hud: "18 arriba + 18 abajo = 36",
+                        robotSpeech: "Cada base aporta 18 vértices. ¡Mira las esferas doradas! V = 2n = 2 × 18 = 36 vértices."
+                    }
+                ]
+            },
+            {
+                id: 4,
+                block: 1,
+                title: "Ejercicio 4",
+                subtitle: "Prisma de 16 vértices",
+                cardGradient: "from-purple-500/55 to-fuchsia-700/55",
+                badgeColor: "bg-purple-600",
+                previewLatex: String.raw`2n = 16 \to A = 24`,
+                enunciado: () => <span>Un prisma tiene <strong>16 vértices</strong>, calcula el número total de <strong>aristas</strong>.</span>,
+                steps: [
+                    {
+                        badge: "1. Vértices del prisma",
+                        latex: String.raw`V = 2n = 16 \implies n = \dfrac{16}{2} = 8`,
+                        hud: "8 vértices arriba + 8 abajo",
+                        robotSpeech: "En todo prisma hay n vértices arriba y n abajo (V = 2n). Como 2n = 16, cada base tiene n = 8 lados."
+                    },
+                    {
+                        badge: "2. Identificamos el prisma",
+                        latex: String.raw`n = 8 \implies \text{Prisma octogonal}`,
+                        hud: "Base octogonal resaltada",
+                        robotSpeech: "Al tener una base de 8 lados, se trata de un prisma octogonal."
+                    },
+                    {
+                        badge: "3. Total de aristas",
+                        latex: String.raw`A = 3n = 3(8) = \mathbf{24 \text{ aristas}}`,
+                        hud: "8 + 8 + 8 = 24 aristas",
+                        robotSpeech: "Contamos 8 aristas arriba (cian), 8 abajo (rosadas) y 8 laterales (doradas): A = 3n = 24 aristas."
+                    }
+                ]
+            },
+            {
+                id: 5,
+                block: 1,
+                title: "Ejercicio 5",
+                subtitle: "Prisma de 9 caras",
+                cardGradient: "from-violet-500/55 to-indigo-700/55",
+                badgeColor: "bg-violet-600",
+                previewLatex: String.raw`n+2=9 \to V = 14`,
+                enunciado: () => <span>Un prisma tiene en total <strong>9 caras</strong>. ¿Cuántos <strong>vértices</strong> tiene?</span>,
+                steps: [
+                    {
+                        badge: "1. Caras del prisma",
+                        latex: String.raw`C = n + 2 = 9`,
+                        hud: "n laterales + 2 bases = 9",
+                        robotSpeech: "El total de caras de un prisma siempre es C = n + 2 (n caras laterales más las 2 bases)."
+                    },
+                    {
+                        badge: "2. Lados de la base",
+                        latex: String.raw`n = 9 - 2 = 7 \text{ lados (heptágono)}`,
+                        hud: "Base heptagonal (n = 7)",
+                        robotSpeech: "Despejamos n = 9 − 2 = 7. ¡Es un prisma heptagonal cuya base tiene 7 lados!"
+                    },
+                    {
+                        badge: "3. Total de vértices",
+                        latex: String.raw`V = 2n = 2(7) = \mathbf{14 \text{ vértices}}`,
+                        hud: "7 arriba + 7 abajo = 14",
+                        robotSpeech: "Cada base tiene 7 vértices: V = 2n = 2 × 7 = 14 vértices. ¡Cuenta las esferas doradas!"
+                    }
+                ]
+            },
+            {
+                id: 6,
+                block: 1,
+                title: "Ejercicio 6",
+                subtitle: "Puntos medios del tetraedro",
+                cardGradient: "from-rose-500/55 to-orange-600/55",
+                badgeColor: "bg-rose-600",
+                previewLatex: String.raw`4 + 4 = 8 \text{ caras}`,
+                enunciado: () => <span>¿Cuántas caras tendrá el sólido que se forma al unir los <strong>puntos medios de las aristas</strong> de un tetraedro regular?</span>,
+                steps: [
+                    {
+                        badge: "1. Tetraedro regular",
+                        latex: String.raw`\text{Tetraedro: } 4 \text{ caras}, \; 4 \text{ vértices}, \; 6 \text{ aristas}`,
+                        hud: "6 puntos medios marcados",
+                        robotSpeech: "Un tetraedro regular tiene 6 aristas. En el gráfico 3D hemos marcado sus 6 puntos medios en rojo."
+                    },
+                    {
+                        badge: "2. Triángulos en las caras",
+                        latex: String.raw`\text{En cada cara del tetraedro} \implies \mathbf{4} \text{ caras triangulares}`,
+                        hud: "4 triángulos en cian",
+                        robotSpeech: "Al unir los 3 puntos medios de cada una de las 4 caras del tetraedro, nacen 4 triángulos de color cian."
+                    },
+                    {
+                        badge: "3. Triángulos en los vértices",
+                        latex: String.raw`\text{En cada vértice del tetraedro} \implies \mathbf{4} \text{ caras triangulares}`,
+                        hud: "4 triángulos en dorado",
+                        robotSpeech: "Y frente a cada una de las 4 esquinas (vértices) del tetraedro se forma otro triángulo dorado: son 4 caras más."
+                    },
+                    {
+                        badge: "4. Total de caras",
+                        latex: String.raw`C_{\text{total}} = 4 + 4 = \mathbf{8 \text{ caras}} \;(\text{octaedro})`,
+                        hud: "Octaedro (8 caras)",
+                        robotSpeech: "¡Gira el sólido 3D! Se ha formado un octaedro regular con 4 + 4 = 8 caras en total."
+                    }
+                ]
+            },
+
+            // ================= BLOQUE 2: ÁREAS Y VOLÚMENES (7 AL 12) =================
+            {
+                id: 7,
+                block: 2,
+                title: "Ejercicio 7",
+                subtitle: "Prisma hexagonal regular",
+                cardGradient: "from-emerald-500/55 to-teal-700/55",
+                badgeColor: "bg-emerald-600",
+                previewLatex: String.raw`A_L = 36 \cdot 7 = 252`,
+                enunciado: () => (
+                    <span>Calcula el área de la superficie lateral del prisma regular hexagonal cuyo volumen es <MathDisplay inline latex="378\sqrt{3}\text{ cm}^3" /> y la suma de las áreas de sus bases es <MathDisplay inline latex="108\sqrt{3}\text{ cm}^2" />.</span>
+                ),
+                steps: [
+                    {
+                        badge: "1. Área de una base",
+                        latex: String.raw`2A_B = 108\sqrt{3} \implies A_B = \dfrac{108\sqrt{3}}{2} = 54\sqrt{3}\text{ cm}^2`,
+                        hud: "2 bases = 108√3 → AB = 54√3",
+                        robotSpeech: "Como la suma de las dos bases es 108√3 cm², el área de una sola base hexagonal es la mitad: 54√3 cm²."
+                    },
+                    {
+                        badge: "2. Arista básica (a)",
+                        latex: String.raw`6 \cdot \dfrac{a^2\sqrt{3}}{4} = 54\sqrt{3} \implies \dfrac{3a^2}{2} = 54 \implies a^2 = 36 \implies a = 6\text{ cm}`,
+                        hud: "6 triángulos → a = 6 cm",
+                        robotSpeech: "Un hexágono regular se divide en 6 triángulos equiláteros. Resolviendo la ecuación obtenemos la arista básica a = 6 cm."
+                    },
+                    {
+                        badge: "3. Altura del prisma (h)",
+                        latex: String.raw`V = A_B \cdot h \implies 378\sqrt{3} = 54\sqrt{3} \cdot h \implies h = \dfrac{378}{54} = 7\text{ cm}`,
+                        hud: "Volumen → altura h = 7 cm",
+                        robotSpeech: "Usamos el volumen V = AB · h. Dividiendo 378√3 entre 54√3 hallamos la altura: h = 7 cm."
+                    },
+                    {
+                        badge: "4. Área lateral",
+                        latex: String.raw`A_L = P_B \cdot h = (6 \cdot 6) \cdot 7 = 36 \cdot 7 = \mathbf{252\text{ cm}^2}`,
+                        hud: "6 caras laterales = 252 cm²",
+                        robotSpeech: "¡Listo! Multiplicamos el perímetro de la base (36 cm) por la altura (7 cm) y resulta AL = 252 cm²."
+                    }
+                ]
+            },
+            {
+                id: 8,
+                block: 2,
+                title: "Ejercicio 8",
+                subtitle: "Prisma de caras cuadradas",
+                cardGradient: "from-amber-500/55 to-orange-700/55",
+                badgeColor: "bg-amber-600",
+                previewLatex: String.raw`A_T = (300 + 50\sqrt{3})\text{ cm}^2`,
+                enunciado: () => (
+                    <span>Con tres regiones cuadradas congruentes y dos triangulares se formó un prisma. Si el perímetro de cada región cuadrada es <strong>40 cm</strong>, ¿cuál es el área total de la superficie?</span>
+                ),
+                steps: [
+                    {
+                        badge: "1. Lado del cuadrado (a)",
+                        latex: String.raw`4a = 40 \implies a = \dfrac{40}{4} = 10\text{ cm}`,
+                        hud: "Cara cuadrada: a = 10 cm",
+                        robotSpeech: "Cada cara lateral es un cuadrado de perímetro 40 cm, así que su lado mide a = 10 cm (la arista básica y la altura miden 10 cm)."
+                    },
+                    {
+                        badge: "2. Área lateral (3 cuadrados)",
+                        latex: String.raw`A_L = 3 \cdot a^2 = 3(10^2) = 3(100) = 300\text{ cm}^2`,
+                        hud: "3 caras cuadradas = 300 cm²",
+                        robotSpeech: "Observa las 3 caras laterales azules: cada cuadrado tiene área 100 cm², por lo que AL = 3 × 100 = 300 cm²."
+                    },
+                    {
+                        badge: "3. Área de las 2 bases △",
+                        latex: String.raw`2A_B = 2 \cdot \dfrac{a^2\sqrt{3}}{4} = 2 \cdot \dfrac{100\sqrt{3}}{4} = 50\sqrt{3}\text{ cm}^2`,
+                        hud: "2 bases equiláteras = 50√3 cm²",
+                        robotSpeech: "Las 2 bases verdes son triángulos equiláteros de lado 10 cm. Cada una mide 25√3 cm², y juntas suman 50√3 cm²."
+                    },
+                    {
+                        badge: "4. Área total",
+                        latex: String.raw`A_T = A_L + 2A_B = \mathbf{(300 + 50\sqrt{3})\text{ cm}^2}`,
+                        hud: "Área Total = (300 + 50√3) cm²",
+                        robotSpeech: "¡Excelente! Sumamos el área lateral y las dos bases: AT = (300 + 50√3) cm², aproximadamente 386,6 cm²."
+                    }
+                ]
+            },
+            {
+                id: 9,
+                block: 2,
+                title: "Ejercicio 9",
+                subtitle: "Área lateral de un rectoedro",
+                cardGradient: "from-sky-500/55 to-blue-700/55",
+                badgeColor: "bg-sky-600",
+                previewLatex: String.raw`A_L = 20 \cdot 10 = 200\text{ cm}^2`,
+                enunciado: () => (
+                    <span>El volumen de un rectoedro es <MathDisplay inline latex="210\text{ cm}^3" /> y su altura mide <strong>10 cm</strong>. Si las aristas de la base miden un número entero de centímetros y son <strong>números primos</strong>, encuentra su área lateral.</span>
+                ),
+                steps: [
+                    {
+                        badge: "1. Volumen del rectoedro",
+                        latex: String.raw`V = a \cdot b \cdot h \implies a \cdot b \cdot 10 = 210 \implies a \cdot b = 21`,
+                        hud: "V = 210 y h = 10 → a·b = 21",
+                        robotSpeech: "Dividimos el volumen 210 cm³ entre la altura 10 cm y descubrimos que el área de la base rectangular es a · b = 21 cm²."
+                    },
+                    {
+                        badge: "2. Dimensiones de la base",
+                        latex: String.raw`a \cdot b = 21 = 7 \times 3 \implies a = 7\text{ cm},\; b = 3\text{ cm}`,
+                        hud: "Base: 7 cm × 3 cm",
+                        robotSpeech: "Como las aristas de la base son números primos, factorizamos 21 = 7 × 3: el largo mide 7 cm y el ancho 3 cm."
+                    },
+                    {
+                        badge: "3. Perímetro de la base",
+                        latex: String.raw`P_B = 2(a + b) = 2(7 + 3) = 2(10) = 20\text{ cm}`,
+                        hud: "Contorno de base = 20 cm",
+                        robotSpeech: "Iluminamos el borde dorado de la base rectangular: su perímetro es 7 + 3 + 7 + 3 = 20 cm."
+                    },
+                    {
+                        badge: "4. Área lateral",
+                        latex: String.raw`A_L = P_B \cdot h = 20 \cdot 10 = \mathbf{200\text{ cm}^2}`,
+                        hud: "4 caras laterales = 200 cm²",
+                        robotSpeech: "¡Muy bien! Multiplicamos el perímetro de la base por la altura: AL = 20 × 10 = 200 cm²."
+                    }
+                ]
+            },
+            {
+                id: 10,
+                block: 2,
+                title: "Ejercicio 10",
+                subtitle: "Prisma pentagonal regular",
+                cardGradient: "from-fuchsia-500/55 to-purple-700/55",
+                badgeColor: "bg-fuchsia-600",
+                previewLatex: String.raw`A_L = 45 \cdot 18 = 810\text{ cm}^2`,
+                enunciado: () => (
+                    <span>Calcula el área de la superficie lateral de un <strong>prisma pentagonal regular</strong>, si la arista lateral mide el <strong>doble</strong> de la arista básica y la suma de las medidas de dichas aristas es <strong>27 cm</strong>.</span>
+                ),
+                steps: [
+                    {
+                        badge: "1. Planteamos las ecuaciones",
+                        latex: String.raw`h = 2a \quad \text{y} \quad h + a = 27`,
+                        hud: "Arista básica (a) y lateral (h)",
+                        robotSpeech: "Llamamos 'a' a la arista básica (cian) y 'h' a la arista lateral (amarilla). Sabemos que h = 2a y juntas suman 27 cm."
+                    },
+                    {
+                        badge: "2. Hallamos a y h",
+                        latex: String.raw`2a + a = 27 \implies 3a = 27 \implies a = 9\text{ cm},\; h = 18\text{ cm}`,
+                        hud: "a = 9 cm y h = 18 cm",
+                        robotSpeech: "Resolvemos la ecuación: 3a = 27 nos da a = 9 cm, y entonces la arista lateral mide h = 2 × 9 = 18 cm."
+                    },
+                    {
+                        badge: "3. Perímetro de la base",
+                        latex: String.raw`P_B = 5a = 5(9) = 45\text{ cm}`,
+                        hud: "Pentágono: PB = 45 cm",
+                        robotSpeech: "Como la base es un pentágono regular de 5 lados iguales, su perímetro es PB = 5 × 9 = 45 cm."
+                    },
+                    {
+                        badge: "4. Área lateral",
+                        latex: String.raw`A_L = P_B \cdot h = 45 \cdot 18 = \mathbf{810\text{ cm}^2}`,
+                        hud: "5 caras laterales = 810 cm²",
+                        robotSpeech: "¡Genial! Multiplicamos 45 cm por 18 cm y las 5 caras laterales violetas suman AL = 810 cm²."
+                    }
+                ]
+            },
+            {
+                id: 11,
+                block: 2,
+                title: "Ejercicio 11",
+                subtitle: "Comparación de cubos",
+                cardGradient: "from-orange-500/55 to-red-600/55",
+                badgeColor: "bg-orange-600",
+                previewLatex: String.raw`A_T = 6(12)^2 = 864`,
+                enunciado: () => (
+                    <span>El volumen de un cubo es <MathDisplay inline latex="216\text{ cm}^3" />. Calcula el área de la superficie total de otro cubo cuya arista mide el <strong>doble</strong> de la arista del cubo anterior.</span>
+                ),
+                steps: [
+                    {
+                        badge: "1. Arista del primer cubo",
+                        latex: String.raw`V_1 = a_1^3 = 216 \implies a_1 = \sqrt[3]{216} = 6\text{ cm}`,
+                        hud: "Cubo 1: a₁ = 6 cm",
+                        robotSpeech: "El volumen de un cubo es su arista al cubo. Como 6 × 6 × 6 = 216, la arista del primer cubo mide a₁ = 6 cm."
+                    },
+                    {
+                        badge: "2. Arista del segundo cubo",
+                        latex: String.raw`a_2 = 2a_1 = 2(6) = 12\text{ cm}`,
+                        hud: "Cubo 2: a₂ = 12 cm (el doble)",
+                        robotSpeech: "¡Mira cómo aparece el Cubo 2 en 3D! Su arista es el doble de la anterior: a₂ = 2 × 6 = 12 cm."
+                    },
+                    {
+                        badge: "3. Área total del Cubo 2",
+                        latex: String.raw`A_T = 6a_2^2 = 6(12)^2 = 6(144) = \mathbf{864\text{ cm}^2}`,
+                        hud: "6 caras cuadradas = 864 cm²",
+                        robotSpeech: "La superficie total de un cubo está formada por sus 6 caras cuadradas (incluye tapa y base): 6 × 144 = 864 cm²."
+                    }
+                ]
+            },
+            {
+                id: 12,
+                block: 2,
+                title: "Ejercicio 12",
+                subtitle: "Tetraedro regular",
+                cardGradient: "from-teal-500/55 to-emerald-700/55",
+                badgeColor: "bg-teal-600",
+                previewLatex: String.raw`A_T = 4\left(\tfrac{81\sqrt{3}}{4}\right) = 81\sqrt{3}`,
+                enunciado: () => (
+                    <span>Una pirámide regular está conformada <strong>solamente por triángulos equiláteros</strong>; si la suma de las medidas de <strong>todas sus aristas</strong> es <strong>54 cm</strong>, calcula el área de la superficie total.</span>
+                ),
+                steps: [
+                    {
+                        badge: "1. Identificamos el sólido",
+                        latex: String.raw`\text{Tetraedro regular: } 4 \text{ caras} \;\text{y}\; 6 \text{ aristas iguales}`,
+                        hud: "6 aristas iguales resaltadas",
+                        robotSpeech: "Una pirámide regular formada solo por triángulos equiláteros es un tetraedro regular: tiene 4 caras y 6 aristas iguales."
+                    },
+                    {
+                        badge: "2. Medida de la arista",
+                        latex: String.raw`6a = 54 \implies a = \dfrac{54}{6} = 9\text{ cm}`,
+                        hud: "Cada arista: a = 9 cm",
+                        robotSpeech: "Las 6 aristas doradas miden lo mismo y suman 54 cm, así que cada arista mide a = 9 cm."
+                    },
+                    {
+                        badge: "3. Área de una cara",
+                        latex: String.raw`A_{\text{cara}} = \dfrac{a^2\sqrt{3}}{4} = \dfrac{9^2\sqrt{3}}{4} = \dfrac{81\sqrt{3}}{4}\text{ cm}^2`,
+                        hud: "1 cara = 81√3/4 cm²",
+                        robotSpeech: "Calculamos el área de la cara triangular dorada: (9²√3)/4 = 81√3/4 cm²."
+                    },
+                    {
+                        badge: "4. Área de la superficie total",
+                        latex: String.raw`A_T = 4\left(\dfrac{81\sqrt{3}}{4}\right) = \mathbf{81\sqrt{3}\text{ cm}^2}`,
+                        hud: "4 caras iguales = 81√3 cm²",
+                        robotSpeech: "¡Misión cumplida! El tetraedro tiene 4 caras iguales: AT = 4 × 81√3/4 = 81√3 cm², aproximadamente 140,3 cm²."
+                    }
+                ]
+            }
+        ];
+
+
+        // =========================================================================
+        // 8. COMPONENTES AMBIENTALES: FONDO FLOTANTE, CONFETI Y ROBOT ASISTENTE
+        // =========================================================================
+        const FloatingBackground = memo(() => {
+            const symbols = ['△', '⬡', '⬠', '□', 'V', 'A', '√3', 'cm²', 'cm³'];
+            const elements = Array.from({ length: 26 }).map((_, i) => ({
+                id: i,
+                symbol: symbols[i % symbols.length],
+                left: `${(i * 3.8 + 2) % 96}%`,
+                animationDuration: `${11 + (i % 7) * 2.1}s`,
+                animationDelay: `-${(i * 1.4) % 20}s`,
+                fontSize: `${1.2 + (i % 4) * 0.52}rem`,
+                opacity: 0.08 + (i % 3) * 0.04
+            }));
+            return (
+                <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+                    {elements.map((el) => (
+                        <div
+                            key={el.id}
+                            className="absolute text-white font-black animate-floatUp select-none drop-shadow-lg"
+                            style={{
+                                left: el.left,
+                                bottom: '-15%',
+                                fontSize: el.fontSize,
+                                opacity: el.opacity,
+                                animationDuration: el.animationDuration,
+                                animationDelay: el.animationDelay
+                            }}
+                        >
+                            {el.symbol}
+                        </div>
+                    ))}
+                </div>
+            );
+        });
+
+        const Confetti = memo(() => {
+            const colors = ['#fde047', '#60a5fa', '#f472b6', '#34d399', '#a78bfa', '#fb923c'];
+            const pieces = Array.from({ length: 110 }).map((_, i) => ({
+                id: i,
+                left: `${50 + (Math.random() * 20 - 10)}%`,
+                color: colors[i % colors.length],
+                tx: `${(Math.random() - 0.5) * 820}px`,
+                ty: `${(Math.random() - 1) * 760}px`,
+                rot: `${Math.random() * 720}deg`,
+                delay: `${Math.random() * 0.2}s`
+            }));
+            return (
+                <div className="absolute inset-0 pointer-events-none z-50 flex items-center justify-center overflow-hidden">
+                    {pieces.map((p) => (
+                        <div
+                            key={p.id}
+                            className="absolute w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full animate-confettiExplosion shadow-sm"
+                            style={{
+                                backgroundColor: p.color,
+                                '--tx': p.tx,
+                                '--ty': p.ty,
+                                '--rot': p.rot,
+                                animationDelay: p.delay,
+                                left: p.left,
+                                top: '50%'
+                            }}
+                        />
+                    ))}
+                </div>
+            );
+        });
+
+        const RobotAssistant = ({ step, maxSteps }) => {
+            const isFinalStep = step >= maxSteps;
+            const isThinking = step === maxSteps - 1 && maxSteps > 1;
+
+            const getContainerAnim = () => {
+                if (isFinalStep) return 'animate-robotJump';
+                if (isThinking) return 'animate-robotThinkTilt';
+                return 'animate-robotFloat';
+            };
+            const getArmLAnim = () => {
+                if (isFinalStep) return 'rotate-[150deg] animate-pulse';
+                if (step > 0) return 'animate-robotTalkArmL';
+                return 'rotate-45';
+            };
+            const getArmRAnim = () => {
+                if (isFinalStep) return '-rotate-[150deg] animate-pulse';
+                if (step > 0) return 'animate-robotTalkArmR';
+                return '-rotate-45';
+            };
+            const getEyes = () => {
+                if (isFinalStep) return <div className="w-full flex justify-between px-1"><div className="w-2.5 h-1.5 bg-emerald-400 rounded-t-full mt-0.5"></div><div className="w-2.5 h-1.5 bg-emerald-400 rounded-t-full mt-0.5"></div></div>;
+                if (step === 0) return <div className="w-full flex justify-between px-1.5"><div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div><div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div></div>;
+                return <div className="w-full flex justify-between px-1"><div className="w-2.5 h-2.5 bg-yellow-400 rounded-full animate-bounce"></div><div className="w-2.5 h-2.5 bg-yellow-400 rounded-full animate-bounce"></div></div>;
+            };
+            const getMouth = () => {
+                if (isFinalStep) return <div className="w-4 h-2.5 bg-rose-400 rounded-b-full mt-1"></div>;
+                if (step === 0) return <div className="w-3 h-1 bg-cyan-300 rounded-full mt-1"></div>;
+                return <div className="w-2.5 h-2.5 bg-rose-400 rounded-full mt-1 animate-ping"></div>;
+            };
+
+            return (
+                <div className={`relative flex flex-col items-center drop-shadow-xl select-none ${getContainerAnim()}`}>
+                    <div className="relative z-0 flex flex-col items-center translate-y-1">
+                        <div className={`w-2.5 h-2.5 rounded-full shadow-[0_0_10px_currentColor] z-10 transition-colors duration-300 ${isFinalStep ? 'text-emerald-400 bg-emerald-400' : 'text-yellow-400 bg-yellow-400 animate-pulse'}`}></div>
+                        <div className="w-1.5 h-3 bg-slate-300"></div>
+                    </div>
+                    <div className="relative z-10 w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-white to-slate-200 rounded-xl border-[2.5px] border-indigo-400 shadow-xl flex flex-col items-center justify-center p-1">
+                        <div className="w-full h-full bg-slate-900 rounded-lg flex flex-col items-center justify-center p-1 shadow-inner border-[1.5px] border-indigo-500">
+                            {getEyes()}
+                            {getMouth()}
+                        </div>
+                    </div>
+                    <div className={`absolute top-1/2 -left-1.5 w-2 h-4 bg-slate-200 border-[2px] border-indigo-400 rounded-full z-0 origin-top ${getArmLAnim()}`}></div>
+                    <div className={`absolute top-1/2 -right-1.5 w-2 h-4 bg-slate-200 border-[2px] border-indigo-400 rounded-full z-0 origin-top ${getArmRAnim()}`}></div>
+                </div>
+            );
+        };
+
+        // =========================================================================
+        // 9. APLICACIÓN PRINCIPAL
+        // =========================================================================
+        function App() {
+            const [view, setView] = useState('home');
+            const [exIdx, setExIdx] = useState(0);
+            const [step, setStep] = useState(0);
+            const [isMuted, setIsMuted] = useState(false);
+            const scrollContainerRef = useRef(null);
+
+            const curEx = EXERCISES[exIdx];
+            const maxSteps = curEx.steps.length - 1;
+            const curStepData = curEx.steps[step];
+            const EnunciadoText = curEx.enunciado;
+
+            const handleInteraction = () => {
+                AudioController.init();
+                AudioController.startBGM();
+            };
+
+            const startExercise = (index) => {
+                handleInteraction();
+                AudioController.play('swoosh');
+                setExIdx(index);
+                setStep(0);
+                setView('lab');
+            };
+
+            const nextStep = () => {
+                handleInteraction();
+                if (step < maxSteps) {
+                    const next = step + 1;
+                    setStep(next);
+                    AudioController.play(next === maxSteps ? 'success' : 'pop');
+                } else {
+                    AudioController.play('swoosh');
+                    if (exIdx < EXERCISES.length - 1) {
+                        setExIdx(exIdx + 1);
+                        setStep(0);
+                    } else {
+                        setView('home');
+                    }
+                }
+            };
+
+            const prevStep = () => {
+                handleInteraction();
+                if (step > 0) {
+                    setStep(step - 1);
+                    AudioController.play('pop-reverse');
+                }
+            };
+
+            const toggleMute = () => {
+                handleInteraction();
+                setIsMuted(AudioController.toggleMute());
+            };
+
+            useEffect(() => {
+                if (scrollContainerRef.current) {
+                    scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+                }
+            }, [step, exIdx, view]);
+
+            // ------------------------- PORTADA (2 BLOQUES, 12 EJERCICIOS) -------------------------
+            if (view === 'home') {
+                const block1 = EXERCISES.filter(e => e.block === 1);
+                const block2 = EXERCISES.filter(e => e.block === 2);
+
+                const renderCard = (ex) => {
+                    const idx = EXERCISES.findIndex(item => item.id === ex.id);
+                    return (
+                        <button
+                            key={ex.id}
+                            onClick={() => startExercise(idx)}
+                            className="group text-left p-4 rounded-[1.5rem] bg-white/10 backdrop-blur-xl border-[3px] border-white/35 hover:border-yellow-300 hover:-translate-y-1.5 hover:shadow-[0_16px_30px_rgba(0,0,0,0.38)] transition-all flex flex-col relative overflow-hidden shadow-lg min-h-[10.2rem]"
+                        >
+                            <div className={`absolute inset-0 bg-gradient-to-br ${ex.cardGradient} opacity-85 group-hover:opacity-100 transition-opacity`}></div>
+                            <div className="relative z-10 flex-1 flex flex-col">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className={`${ex.badgeColor} text-white text-xs font-black px-3 py-0.5 rounded-full uppercase tracking-wider shadow-sm`}>
+                                        {ex.title}
+                                    </span>
+                                    <span className="text-white/95 text-xs font-extrabold bg-black/25 px-2.5 py-0.5 rounded-full">
+                                        3D • {ex.steps.length} pasos
+                                    </span>
+                                </div>
+                                <div className="flex-1 my-1.5 bg-white/95 rounded-xl px-2.5 py-2 text-slate-900 shadow-inner flex items-center justify-center border border-white/60 pointer-events-none math-card">
+                                    <MathDisplay latex={ex.previewLatex} align="center" />
+                                </div>
+                                <div className="text-white text-sm sm:text-base font-black text-center mt-1.5 drop-shadow-md">
+                                    {ex.subtitle}
+                                </div>
+                            </div>
+                        </button>
+                    );
+                };
+
+                return (
+                    <div className="w-screen h-[100dvh] bg-gradient-to-br from-[#0f172a] via-[#312e81] to-[#831843] flex flex-col items-center justify-start p-4 sm:p-6 relative font-fun overflow-y-auto scrollbar-hide">
+                        <FloatingBackground />
+
+                        {/* Barra superior */}
+                        <div className="w-[96%] max-w-[1400px] z-20 flex items-center justify-between mb-5 mt-1">
+                            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl border-2 border-yellow-300 bg-white/15 backdrop-blur-md text-yellow-300 font-black tracking-wider uppercase shadow-md text-xs sm:text-base">
+                                <Rocket className="w-5 h-5 text-yellow-300" /> TuProfe20 Lab
+                            </div>
+                            <button onClick={toggleMute} title="Audio" className="p-2.5 sm:p-3 rounded-2xl bg-white/20 border-2 border-white/30 backdrop-blur-md text-white hover:bg-white/30 transition-all active:scale-95">
+                                {isMuted ? <VolumeX className="w-5 h-5 sm:w-6 sm:h-6" /> : <Volume2 className="w-5 h-5 sm:w-6 sm:h-6" />}
+                            </button>
+                        </div>
+
+                        {/* Encabezado de portada */}
+                        <div className="relative z-10 text-center w-[96%] max-w-[1400px] flex flex-col items-center pb-12">
+                            <div className="inline-flex items-center gap-2 px-4 py-1 rounded-full bg-white/15 border border-white/30 text-cyan-200 font-black text-xs sm:text-sm uppercase tracking-widest mb-3 shadow-sm">
+                                Geometría del Espacio • 1.° de Secundaria
+                            </div>
+                            <h1 className="text-3xl sm:text-5xl md:text-6xl font-black text-white mb-3 drop-shadow-[0_5px_0_rgba(0,0,0,0.3)] tracking-tight leading-tight uppercase">
+                                ÁREA Y VOLÚMENES DE <span className="text-yellow-300 underline decoration-wavy decoration-cyan-400 underline-offset-8">SÓLIDOS GEOMÉTRICOS</span>
+                            </h1>
+                            <p className="text-sm sm:text-lg lg:text-xl text-purple-100 mb-8 font-bold max-w-3xl leading-relaxed">
+                                Explora 12 ejercicios con sólidos 3D interactivos que puedes rotar en tiempo real paso a paso 🧊✨🤖
+                            </p>
+
+                            {/* BLOQUE 1 */}
+                            <div className="w-full mb-8">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <span className="px-4 py-1.5 rounded-full bg-cyan-400 text-slate-950 font-black text-xs sm:text-sm uppercase tracking-widest shadow-md">
+                                        Bloque 1 • Poliedros y Prismas (Ejercicios 1 al 6)
+                                    </span>
+                                    <div className="flex-1 h-[2px] bg-white/25 rounded-full"></div>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {block1.map(renderCard)}
+                                </div>
+                            </div>
+
+                            {/* BLOQUE 2 */}
+                            <div className="w-full">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <span className="px-4 py-1.5 rounded-full bg-yellow-400 text-slate-950 font-black text-xs sm:text-sm uppercase tracking-widest shadow-md">
+                                        Bloque 2 • Áreas y Volúmenes (Ejercicios 7 al 12)
+                                    </span>
+                                    <div className="flex-1 h-[2px] bg-white/25 rounded-full"></div>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {block2.map(renderCard)}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            // ------------------------- VISTA LABORATORIO -------------------------
+            return (
+                <div className="lab-root w-screen h-[100dvh] bg-gradient-to-br from-[#0f172a] via-[#312e81] to-[#831843] text-slate-800 flex flex-col p-2 sm:p-3.5 relative font-fun overflow-hidden">
+                    <FloatingBackground />
+                    {step === maxSteps && <Confetti />}
+
+                    {/* Barra superior */}
+                    <div className="shrink-0 relative z-10 w-[98%] max-w-[1440px] mx-auto flex justify-between items-center mb-2.5 px-1 gap-2">
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => { AudioController.play('swoosh'); setView('home'); }}
+                                className="flex items-center justify-center px-3.5 py-2 rounded-[1rem] bg-white/10 border-[2.5px] border-white/30 backdrop-blur-md text-white font-black hover:bg-white/20 transition-all shadow-lg active:scale-95 text-xs sm:text-sm"
+                            >
+                                <Home className="w-4 h-4 sm:w-5 sm:h-5 sm:mr-1.5" />
+                                <span className="hidden sm:inline">Portada</span>
+                            </button>
+                            <div className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 border border-yellow-300/40 text-yellow-300 font-black text-xs uppercase tracking-wider">
+                                <Rocket className="w-4 h-4" /> TuProfe20 Lab
+                            </div>
+                        </div>
+
+                        {/* Selector numérico 1 al 12 */}
+                        <div className="flex items-center gap-1 sm:gap-1.5 bg-black/35 p-1.5 rounded-[1rem] border-2 border-white/20 backdrop-blur-md shadow-lg overflow-x-auto scrollbar-hide max-w-[66vw]">
+                            {EXERCISES.map((ex, i) => (
+                                <button
+                                    key={ex.id}
+                                    onClick={() => startExercise(i)}
+                                    className={`shrink-0 w-7 h-7 sm:w-9 sm:h-9 rounded-[0.7rem] font-black text-xs sm:text-sm transition-all ${
+                                        exIdx === i
+                                            ? 'bg-yellow-400 text-slate-900 scale-110 shadow-[0_0_12px_rgba(250,204,21,0.75)]'
+                                            : 'text-white hover:bg-white/20'
+                                    }`}
+                                >
+                                    {ex.id}
+                                </button>
+                            ))}
+                        </div>
+
+                        <button onClick={toggleMute} title="Audio" className="p-2 sm:p-2.5 rounded-[1rem] bg-white/10 border-[2.5px] border-white/30 text-white hover:bg-white/20 transition-all shadow-lg active:scale-95">
+                            {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                        </button>
+                    </div>
+
+                    {/* Pizarra principal */}
+                    <div className="lab-board flex-1 min-h-0 relative z-10 w-[98%] max-w-[1440px] mx-auto bg-white rounded-[1.8rem] sm:rounded-[2.2rem] border-[5px] sm:border-[7px] border-slate-100 shadow-[0_25px_55px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden">
+
+                        {/* Encabezado oscuro con enunciado */}
+                        <div className="lab-enun shrink-0 bg-slate-900 border-b-[4px] border-cyan-500 px-4 py-2.5 sm:px-6 sm:py-3 flex flex-col justify-center relative shadow-md z-20">
+                            <div className="flex justify-between items-center w-full max-w-6xl mx-auto mb-1">
+                                <span className="bg-cyan-400 text-slate-950 font-black text-xs sm:text-sm px-3 py-0.5 rounded-md uppercase tracking-widest shadow-sm">
+                                    {curEx.title}
+                                </span>
+                                <span className="text-yellow-300 font-extrabold text-xs sm:text-sm bg-white/10 px-3 py-0.5 rounded-md">
+                                    {curEx.subtitle}
+                                </span>
+                            </div>
+                            <div className="text-white font-bold text-sm sm:text-lg md:text-xl text-center w-full max-w-5xl mx-auto leading-snug math-enunciado">
+                                <EnunciadoText />
+                            </div>
+                        </div>
+
+                        {/* Área dividida: 46% desarrollo fluido / 54% gráfico 3D de gran tamaño */}
+                        <div className="lab-split flex-1 flex flex-col md:flex-row bg-slate-50 overflow-hidden relative">
+
+                            {/* PANEL IZQUIERDO: DESARROLLO PASO A PASO SIN RECUADROS */}
+                            <div
+                                ref={scrollContainerRef}
+                                className="w-full md:w-[46%] flex-1 px-5 py-4 sm:px-7 sm:py-5 overflow-y-auto scrollbar-hide flex flex-col gap-3 pb-16 relative z-10 border-b-2 md:border-b-0 md:border-r-2 border-slate-200/70"
+                            >
+                                <div className="absolute inset-0 opacity-[0.04] bg-[radial-gradient(#0f172a_1.5px,transparent_1.5px)] [background-size:20px_20px] pointer-events-none"></div>
+
+                                <div className="relative z-10 flex items-center justify-between border-b border-slate-200 pb-1.5">
+                                    <span className="text-xs font-black uppercase tracking-widest text-indigo-600">
+                                        Desarrollo Paso a Paso
+                                    </span>
+                                    <span className="text-xs font-extrabold text-slate-400">
+                                        Geometría 1.° Sec.
+                                    </span>
+                                </div>
+
+                                {curEx.steps.slice(0, step + 1).map((s, idx) => {
+                                    const isCurrent = idx === step;
+                                    const isFinal = isCurrent && step === maxSteps;
+                                    return (
+                                        <div
+                                            key={`${exIdx}-${idx}`}
+                                            className={`relative z-10 pl-3.5 py-1 transition-all duration-300 border-l-[4px] ${
+                                                isFinal
+                                                    ? 'border-l-amber-400 animate-finalGlow rounded-r-xl pr-3 opacity-100 animate-slideInRight'
+                                                    : isCurrent
+                                                        ? 'border-l-cyan-500 opacity-100 animate-slideInRight'
+                                                        : 'border-l-slate-300 opacity-55'
+                                            }`}
+                                        >
+                                            <div className="mb-0.5 flex items-center gap-2">
+                                                <span
+                                                    className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-black text-[11px] sm:text-xs tracking-wide ${
+                                                        isFinal
+                                                            ? 'bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 shadow-sm'
+                                                            : isCurrent
+                                                                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-sm'
+                                                                : 'bg-slate-200 text-slate-600'
+                                                    }`}
+                                                >
+                                                    {isCurrent && <Sparkles className="w-3.5 h-3.5" />}
+                                                    {s.badge}
+                                                </span>
+                                            </div>
+                                            <div className={`py-0.5 ${isFinal ? 'math-final' : isCurrent ? 'math-current' : 'math-history'}`}>
+                                                <MathDisplay latex={s.latex} align="left" />
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {/* PANEL DERECHO: SÓLIDO 3D INTERACTIVO DE GRAN TAMAÑO */}
+                            <div className="w-full md:w-[54%] flex-1 bg-white/90 p-3 sm:p-4 flex flex-col relative z-10 min-h-[260px]">
+                                <div className="flex items-center gap-1.5 mb-2 z-20">
+                                    <BoxIcon className="w-4 h-4 text-cyan-500" />
+                                    <span className="font-black text-slate-500 uppercase tracking-widest text-[11px] sm:text-xs">
+                                        Modelo 3D Interactivo
+                                    </span>
+                                </div>
+                                <div className="flex-1 w-full min-h-0">
+                                    <ThreeScene3D
+                                        exerciseId={curEx.id}
+                                        step={step}
+                                        hudCaption={curStepData.hud}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Pizarra superpuesta */}
+                            <DrawingCanvas />
+                        </div>
+
+                        {/* Barra del Robot Asistente */}
+                        <div className="lab-robot shrink-0 bg-white w-full px-4 py-2 sm:px-6 sm:py-2.5 flex items-center gap-3 sm:gap-5 border-t-[3px] border-slate-100 z-30 relative shadow-[0_-8px_18px_rgba(0,0,0,0.04)]">
+                            <div className="shrink-0 absolute -top-9 sm:relative sm:top-0 left-3 sm:left-0 drop-shadow-xl z-50">
+                                <RobotAssistant step={step} maxSteps={maxSteps} />
+                            </div>
+                            <div className="flex-1 text-xs sm:text-sm md:text-base font-bold text-slate-700 leading-snug bg-blue-50/90 px-3 py-2 sm:px-4 sm:py-2.5 rounded-[1rem] border-2 border-blue-100 min-h-[2.8rem] flex items-center shadow-sm ml-[3.4rem] sm:ml-0">
+                                <div key={`speech-${exIdx}-${step}`} className="animate-slideInRight w-full">
+                                    {curStepData.robotSpeech}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Controles inferiores */}
+                        <div className="lab-controls shrink-0 bg-gradient-to-b from-[#e0e7ff] to-[#c7d2fe] p-2 sm:p-2.5 w-full flex flex-col items-center border-t-[3px] border-white z-40">
+                            <div className="flex justify-center items-stretch w-full max-w-4xl gap-2 sm:gap-3 h-9 sm:h-10">
+                                <button
+                                    onClick={prevStep}
+                                    disabled={step === 0}
+                                    className="flex-[0.8] bg-[#a5b4fc] border-b-[4px] border-[#6366f1] text-[#312e81] rounded-l-xl font-black text-xs sm:text-sm flex items-center justify-center gap-1 active:border-b-0 active:translate-y-[4px] disabled:opacity-40 transition-all hover:bg-[#c7d2fe]"
+                                >
+                                    <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 stroke-[3px]" />
+                                    <span className="hidden sm:inline">Atrás</span>
+                                </button>
+                                <div className="bg-[#6366f1] text-white font-black px-3 sm:px-5 text-xs sm:text-sm flex items-center justify-center border-b-[4px] border-[#4338ca] shadow-inner whitespace-nowrap min-w-[4.5rem]">
+                                    Paso {step + 1}/{maxSteps + 1}
+                                </div>
+                                <button
+                                    onClick={nextStep}
+                                    className={`flex-[2] border-b-[4px] text-white rounded-r-xl font-black text-xs sm:text-sm flex items-center justify-center gap-1 active:border-b-0 active:translate-y-[4px] transition-all shadow-sm hover:brightness-110 ${
+                                        step === maxSteps
+                                            ? 'bg-gradient-to-r from-[#10b981] to-[#047857] border-[#065f46] animate-pulse'
+                                            : 'bg-gradient-to-r from-[#06b6d4] to-[#0284c7] border-[#0369a1]'
+                                    }`}
+                                >
+                                    <span>
+                                        {step < maxSteps
+                                            ? '¡Siguiente Paso!'
+                                            : exIdx < EXERCISES.length - 1
+                                                ? `Siguiente Ejercicio (${EXERCISES[exIdx + 1].id})`
+                                                : '¡Volver a Portada!'}
+                                    </span>
+                                    <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 stroke-[3px]" />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
